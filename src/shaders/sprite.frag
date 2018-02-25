@@ -117,23 +117,23 @@ void main()
 	}
 	#endif // ENABLE_pixelate
 
-	#ifdef ENABLE_whirl
-	{
-		const float kRadius = 0.5;
-		vec2 offset = texcoord0 - kCenter;
-		float offsetMagnitude = length(offset);
-		float whirlFactor = max(1.0 - (offsetMagnitude / kRadius), 0.0);
-		float whirlActual = u_whirl * whirlFactor * whirlFactor;
-		float sinWhirl = sin(whirlActual);
-		float cosWhirl = cos(whirlActual);
-		mat2 rotationMatrix = mat2(
-			cosWhirl, -sinWhirl,
-			sinWhirl, cosWhirl
-		);
-
-		texcoord0 = rotationMatrix * offset + kCenter;
-	}
-	#endif // ENABLE_whirl
+//	#ifdef ENABLE_whirl
+//	{
+//		const float kRadius = 0.5;
+//		vec2 offset = texcoord0 - kCenter;
+//		float offsetMagnitude = length(offset);
+//		float whirlFactor = max(1.0 - (offsetMagnitude / kRadius), 0.0);
+//		float whirlActual = u_whirl * whirlFactor * whirlFactor;
+//		float sinWhirl = sin(whirlActual);
+//		float cosWhirl = cos(whirlActual);
+//		mat2 rotationMatrix = mat2(
+//			cosWhirl, -sinWhirl,
+//			sinWhirl, cosWhirl
+//		);
+//
+//		texcoord0 = rotationMatrix * offset + kCenter;
+//	}
+//	#endif // ENABLE_whirl
 
 	#ifdef ENABLE_fisheye
 	{
@@ -147,6 +147,41 @@ void main()
 	#endif // ENABLE_fisheye
 
 	gl_FragColor = texture2D(u_skin, texcoord0);
+
+	#ifdef ENABLE_whirl
+	{
+		float scale = 0.01;
+		float vertStep = 0.025;
+		float seed = (texcoord0.y + u_whirl) - mod(texcoord0.y, vertStep);
+		float rand = fract(sin(seed)*1000000.0) * scale;
+		rand *= u_whirl;
+		vec2 offset1 = texcoord0;
+		offset1.x += rand + u_whirl * scale;
+		vec2 offset2 = texcoord0;
+		offset2.x -= rand + u_whirl * scale;
+		vec2 offset3 = texcoord0;
+		offset3.y += rand + u_whirl * scale;
+		vec3 glitch;
+		glitch.r = texture2D(u_skin, offset1).r;
+		glitch.g = texture2D(u_skin, offset2).g;
+		glitch.b = texture2D(u_skin, offset3).b;
+		vec4 original = texture2D(u_skin, texcoord0);
+		float alpha = texture2D(u_skin, texcoord0).a;
+
+		// if alpha > 0 and color black, use orig
+		float sum = glitch.r + glitch.g + glitch.b;
+		if ((alpha > 0.0) && (sum < 0.1)) {
+			glitch = original.rgb;
+		}
+
+		// if alpha 0 and color not black, set alpha to 0.5
+		if ((alpha < 0.01) && (sum > 0.1)) {
+			alpha = 0.5;
+		}
+
+		gl_FragColor = vec4(glitch, alpha);
+	}
+	#endif // ENABLE_whirl
 
 
 	if (gl_FragColor.a == 0.0)
