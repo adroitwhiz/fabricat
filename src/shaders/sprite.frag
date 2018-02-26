@@ -152,7 +152,7 @@ void main()
 	{
 		float scale = 0.01;
 		float vertStep = 0.025;
-		float seed = (texcoord0.y + u_whirl) - mod(texcoord0.y, vertStep);
+		float seed = (texcoord0.y) - mod(texcoord0.y, vertStep);
 		float rand = fract(sin(seed)*1000000.0) * scale;
 		rand *= u_whirl;
 		vec2 offset1 = texcoord0;
