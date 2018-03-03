@@ -153,20 +153,21 @@ void main()
 		float scale = 0.01;
 		float vertStep = 0.025;
 		float seed = (texcoord0.y) - mod(texcoord0.y, vertStep);
-		float rand = fract(sin(seed)*1000000.0) * scale;
+		float rand = fract(sin(seed)*1000000.0);
+		rand = rand * rand * scale;
 		rand *= u_whirl;
 		vec2 offset1 = texcoord0;
 		offset1.x += rand + u_whirl * scale;
 		vec2 offset2 = texcoord0;
 		offset2.x -= rand + u_whirl * scale;
 		vec2 offset3 = texcoord0;
-		offset3.y += rand + u_whirl * scale;
+		offset3.y -= rand + u_whirl * scale;
 		vec3 glitch;
 		glitch.r = texture2D(u_skin, offset1).r;
 		glitch.g = texture2D(u_skin, offset2).g;
 		glitch.b = texture2D(u_skin, offset3).b;
 		vec4 original = texture2D(u_skin, texcoord0);
-		float alpha = texture2D(u_skin, texcoord0).a;
+		float alpha = original.a;
 
 		// if alpha > 0 and color black, use orig
 		float sum = glitch.r + glitch.g + glitch.b;
