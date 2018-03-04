@@ -131,6 +131,12 @@ ShaderManager.EFFECT_INFO = {
         mask: 1 << 6,
         converter: x => 1 - (Math.max(0, Math.min(x, 100)) / 100),
         shapeChanges: false
+    },
+    /** Glitch effect */
+    glitch: {
+        mask: 1 << 7,
+        converter: x => x / 10,
+        shapeChanges: true
     }
 };
 
