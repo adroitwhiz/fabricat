@@ -150,32 +150,36 @@ void main()
 
 	#ifdef ENABLE_whirl
 	{
-		float scale = 0.01;
-		float vertStep = 0.025;
-		float seed = (texcoord0.y) - mod(texcoord0.y, vertStep);
-		float rand = fract(sin(seed)*1000000.0);
-		rand = rand * rand * scale;
-		rand *= u_whirl;
+		float scale = 0.04; // A scale factor for the color offset
+		float steps = 50.0; // Number of steps for the noise function
+
+		// Use smoothed noise to create wavy variation in the color offset.
+		// The y axis is divided into steps, and at each one we generate a pseudorandom
+		// number (by taking a sin value and multiplying by a large number, then using
+		// the fractional part). We smoothly interpolate between the current and next step
+		// using the smoothstep function.
+		float i = floor(steps * texcoord0.y);
+		float f = fract(steps * texcoord0.y);
+		float bigVal = 1000000.0;
+		float rand0 = fract(sin(i)*bigVal);
+		float rand1 = fract(sin(i + 1.0)*bigVal);
+		float rand = mix(rand0, rand1, smoothstep(0.,1.,f));
+		rand = rand * u_whirl * scale;
+
+		// Apply the wavy smoothed noise in direction for red, and the other for green.
 		vec2 offset1 = texcoord0;
-		offset1.x += rand + u_whirl * scale;
+		offset1.x += rand;
 		vec2 offset2 = texcoord0;
-		offset2.x -= rand + u_whirl * scale;
-		vec2 offset3 = texcoord0;
-		offset3.y -= rand + u_whirl * scale;
+		offset2.x -= rand;
 		vec3 glitch;
 		glitch.r = texture2D(u_skin, offset1).r;
 		glitch.g = texture2D(u_skin, offset2).g;
-		glitch.b = texture2D(u_skin, offset3).b;
 		vec4 original = texture2D(u_skin, texcoord0);
 		float alpha = original.a;
+		glitch.b = original.b;
 
-		// if alpha > 0 and color black, use orig
-		float sum = glitch.r + glitch.g + glitch.b;
-		if ((alpha > 0.0) && (sum < 0.1)) {
-			glitch = original.rgb;
-		}
-
-		// if alpha 0 and color not black, set alpha to 0.5
+		// If alpha is close to 0 and the color is not black, set the alpha to 0.5
+		float sum = glitch.r + glitch.g + original.b;
 		if ((alpha < 0.01) && (sum > 0.1)) {
 			alpha = 0.5;
 		}
