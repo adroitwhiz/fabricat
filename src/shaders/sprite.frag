@@ -34,6 +34,9 @@ uniform float u_mosaic;
 #ifdef ENABLE_ghost
 uniform float u_ghost;
 #endif // ENABLE_ghost
+#ifdef ENABLE_glitch
+uniform float u_glitch;
+#endif // ENABLE_glitch
 
 uniform sampler2D u_skin;
 
@@ -117,23 +120,23 @@ void main()
 	}
 	#endif // ENABLE_pixelate
 
-//	#ifdef ENABLE_whirl
-//	{
-//		const float kRadius = 0.5;
-//		vec2 offset = texcoord0 - kCenter;
-//		float offsetMagnitude = length(offset);
-//		float whirlFactor = max(1.0 - (offsetMagnitude / kRadius), 0.0);
-//		float whirlActual = u_whirl * whirlFactor * whirlFactor;
-//		float sinWhirl = sin(whirlActual);
-//		float cosWhirl = cos(whirlActual);
-//		mat2 rotationMatrix = mat2(
-//			cosWhirl, -sinWhirl,
-//			sinWhirl, cosWhirl
-//		);
-//
-//		texcoord0 = rotationMatrix * offset + kCenter;
-//	}
-//	#endif // ENABLE_whirl
+	#ifdef ENABLE_whirl
+	{
+		const float kRadius = 0.5;
+		vec2 offset = texcoord0 - kCenter;
+		float offsetMagnitude = length(offset);
+		float whirlFactor = max(1.0 - (offsetMagnitude / kRadius), 0.0);
+		float whirlActual = u_whirl * whirlFactor * whirlFactor;
+		float sinWhirl = sin(whirlActual);
+		float cosWhirl = cos(whirlActual);
+		mat2 rotationMatrix = mat2(
+			cosWhirl, -sinWhirl,
+			sinWhirl, cosWhirl
+		);
+
+		texcoord0 = rotationMatrix * offset + kCenter;
+	}
+	#endif // ENABLE_whirl
 
 	#ifdef ENABLE_fisheye
 	{
@@ -148,9 +151,9 @@ void main()
 
 	gl_FragColor = texture2D(u_skin, texcoord0);
 
-	#ifdef ENABLE_whirl
+	#ifdef ENABLE_glitch
 	{
-		float scale = 0.04; // A scale factor for the color offset
+		float scale = 0.01; // A scale factor for the color offset
 		float steps = 50.0; // Number of steps for the noise function
 
 		// Use smoothed noise to create wavy variation in the color offset.
@@ -164,9 +167,9 @@ void main()
 		float rand0 = fract(sin(i)*bigVal);
 		float rand1 = fract(sin(i + 1.0)*bigVal);
 		float rand = mix(rand0, rand1, smoothstep(0.,1.,f));
-		rand = rand * u_whirl * scale;
+		rand = rand * u_glitch * scale;
 
-		// Apply the wavy smoothed noise in direction for red, and the other for green.
+		// Apply the wavy smoothed noise in one direction for red, and the other for green.
 		vec2 offset1 = texcoord0;
 		offset1.x += rand;
 		vec2 offset2 = texcoord0;
@@ -180,13 +183,11 @@ void main()
 
 		// If alpha is close to 0 and the color is not black, set the alpha to 0.5
 		float sum = glitch.r + glitch.g + original.b;
-		if ((alpha < 0.01) && (sum > 0.1)) {
-			alpha = 0.5;
-		}
+		alpha += step(0.1, sum * (1.0 - alpha)) * 0.5;
 
 		gl_FragColor = vec4(glitch, alpha);
 	}
-	#endif // ENABLE_whirl
+	#endif // ENABLE_glitch
 
 
 	if (gl_FragColor.a == 0.0)
