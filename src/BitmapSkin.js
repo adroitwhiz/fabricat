@@ -51,6 +51,13 @@ class BitmapSkin extends Skin {
     }
 
     /**
+     * @return {Array<number>} the "native" size, in texels, of this skin's render bounds.
+     */
+    get renderedSize () {
+        return [this._textureSize[0] / this._costumeResolution, this._textureSize[1] / this._costumeResolution];
+    }
+
+    /**
      * @return {Array<number>} the size, in pixels, of the bitmap source of this skin.
      */
     get resolution () {

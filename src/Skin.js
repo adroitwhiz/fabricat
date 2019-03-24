@@ -100,6 +100,14 @@ class Skin extends EventEmitter {
 
     /**
      * @abstract
+     * @return {Array<number>} the "native" size, in texels, of this skin's render bounds.
+     */
+    get renderedSize () {
+        return [0, 0];
+    }
+
+    /**
+     * @abstract
      * @return {Array<number>} the resolution of this skin's texture.
      */
     get resolution () {
@@ -151,7 +159,7 @@ class Skin extends EventEmitter {
      */
     getUniforms (scale) {
         this._uniforms.u_skin = this.getTexture(scale);
-        this._uniforms.u_skinSize = this.size;
+        this._uniforms.u_skinSize = this.renderedSize;
         return this._uniforms;
     }
 

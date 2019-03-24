@@ -321,7 +321,7 @@ class Drawable {
 
             // Locally assign skinSize to keep from having the Skin getter
             // properties called twice.
-            const skinSize = this.skin.size;
+            const skinSize = this.skin.renderedSize;
             const scaledSize = this._skinScale;
             scaledSize[0] = skinSize[0] * this._scale[0] / 100;
             scaledSize[1] = skinSize[1] * this._scale[1] / 100;
