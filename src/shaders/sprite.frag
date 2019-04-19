@@ -248,7 +248,6 @@ void main()
 	float cappedLine = max(line, max(cap1, cap2));
 
 	gl_FragColor = u_lineColor * vec4(1, 1, 1, cappedLine);
-	//gl_FragColor = vec4(v_texCoord.x, v_texCoord.y, 0, 1);
 
 	#endif // DRAW_MODE_lineSample
 }
