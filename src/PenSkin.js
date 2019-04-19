@@ -224,72 +224,27 @@ class PenSkin extends Skin {
      * Create 2D geometry for drawing lines to a framebuffer.
      */
     _createLineGeometry () {
-        // Create a set of triangulated quads that break up a line into 3 parts:
-        // 2 caps and a body. The y component of these position vertices are
-        // divided to bring a value of 1 down to 0.5 to 0. The large y values
-        // are set so they will still be at least 0.5 after division. The
-        // divisor is scaled based on the length of the line and the lines
-        // width.
-        //
-        // Texture coordinates are based on a "generated" texture whose general
-        // shape is a circle. The line caps set their texture values to define
-        // there roundedness with the texture. The body has all of its texture
-        // values set to the center of the texture so it's a solid block.
         const quads = {
             a_position: {
                 numComponents: 2,
                 data: [
-                    -0.5, 1,
-                    0.5, 1,
-                    -0.5, 100000,
-
-                    -0.5, 100000,
-                    0.5, 1,
-                    0.5, 100000,
-
-                    -0.5, 1,
-                    0.5, 1,
-                    -0.5, -1,
-
-                    -0.5, -1,
-                    0.5, 1,
-                    0.5, -1,
-
-                    -0.5, -100000,
-                    0.5, -100000,
-                    -0.5, -1,
-
-                    -0.5, -1,
-                    0.5, -100000,
-                    0.5, -1
+                    -1, -1,
+                    1, -1,
+                    -1, 1,
+                    -1, 1,
+                    1, -1,
+                    1, 1
                 ]
             },
             a_texCoord: {
                 numComponents: 2,
                 data: [
-                    1, 0.5,
-                    0, 0.5,
-                    1, 0,
-
-                    1, 0,
-                    0, 0.5,
-                    0, 0,
-
-                    0.5, 0,
-                    0.5, 1,
-                    0.5, 0,
-
-                    0.5, 0,
-                    0.5, 1,
-                    0.5, 1,
-
                     1, 0,
                     0, 0,
-                    1, 0.5,
-
-                    1, 0.5,
+                    1, 1,
+                    1, 1,
                     0, 0,
-                    0, 0.5
+                    0, 1
                 ]
             }
         };
@@ -357,40 +312,29 @@ class PenSkin extends Skin {
 
         this._renderer.enterDrawRegion(this._lineOnBufferDrawRegionId);
 
-        const diameter = penAttributes.diameter || DefaultPenAttributes.diameter;
-        const length = Math.hypot(Math.abs(x1 - x0) - 0.001, Math.abs(y1 - y0) - 0.001);
-        const avgX = (x0 + x1) / 2;
-        const avgY = (y0 + y1) / 2;
-        const theta = Math.atan2(y0 - y1, x0 - x1);
-        const alias = 1;
+        const radius = penAttributes.diameter / 2;
 
-        // The line needs a bit of aliasing to look smooth. Add a small offset
-        // and a small size boost to scaling to give a section to alias.
-        const translationVector = __modelTranslationVector;
-        translationVector[0] = avgX - (alias / 2);
-        translationVector[1] = avgY + (alias / 4);
+        // Clip drawn polygon to line's AABB.
+        // Possible TODO: Make this tighter by calculating *actual* bounding box (not axis-aligned)?
+        const transformMatrix = twgl.m4.identity();
 
-        const scalingVector = __modelScalingVector;
-        scalingVector[0] = diameter + alias;
-        scalingVector[1] = length + diameter - (alias / 2);
+        const left = Math.floor(Math.min(x0, x1) - radius) - 1;
+        const right = Math.ceil(Math.max(x0, x1) + radius) + 1;
+        const top = Math.floor(Math.min(y0, y1) - radius) - 1;
+        const bottom = Math.floor(Math.max(y0, y1) + radius) + 1;
 
-        const radius = diameter / 2;
-        const yScalar = (0.50001 - (radius / (length + diameter)));
+        twgl.m4.translate(transformMatrix, [(left / 240) - 1, (top / 180) - 1, 0], transformMatrix);
+        twgl.m4.scale(transformMatrix, [(right - left) / 480, (bottom - top) / 360, 1], transformMatrix);
+        twgl.m4.translate(transformMatrix, [1, 1, 0], transformMatrix);
 
+        // All line-drawing work is done via shader--pass these parameters into it.
         const uniforms = {
-            u_positionScalar: yScalar,
-            u_capScale: diameter,
-            u_aliasAmount: alias,
-            u_modelMatrix: twgl.m4.multiply(
-                twgl.m4.multiply(
-                    twgl.m4.translation(translationVector, __modelTranslationMatrix),
-                    twgl.m4.rotationZ(theta - (Math.PI / 2), __modelRotationMatrix),
-                    __modelMatrix
-                ),
-                twgl.m4.scaling(scalingVector, __modelScalingMatrix),
-                __modelMatrix
-            ),
-            u_lineColor: penAttributes.color4f || DefaultPenAttributes.color4f
+            u_modelMatrix: transformMatrix,
+            u_lineColor: penAttributes.color4f || DefaultPenAttributes.color4f,
+            u_lineThickness: penAttributes.diameter,
+            u_p1: [x0, y0],
+            u_p2: [x1, y1],
+            u_stageSize: this.size
         };
 
         twgl.setUniforms(currentShader, uniforms);
@@ -602,27 +546,6 @@ class PenSkin extends Skin {
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         this._silhouetteDirty = true;
-    }
-
-    /**
-     * Set context state to match provided pen attributes.
-     * @param {CanvasRenderingContext2D} context - the canvas rendering context to be modified.
-     * @param {PenAttributes} penAttributes - the pen attributes to be used.
-     * @private
-     */
-    _setAttributes (context, penAttributes) {
-        penAttributes = penAttributes || DefaultPenAttributes;
-        const color4f = penAttributes.color4f || DefaultPenAttributes.color4f;
-        const diameter = penAttributes.diameter || DefaultPenAttributes.diameter;
-
-        const r = Math.round(color4f[0] * 255);
-        const g = Math.round(color4f[1] * 255);
-        const b = Math.round(color4f[2] * 255);
-        const a = color4f[3]; // Alpha is 0 to 1 (not 0 to 255 like r,g,b)
-
-        context.strokeStyle = `rgba(${r},${g},${b},${a})`;
-        context.lineCap = 'round';
-        context.lineWidth = diameter;
     }
 
     /**

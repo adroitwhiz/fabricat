@@ -37,8 +37,10 @@ uniform float u_ghost;
 
 #ifdef DRAW_MODE_lineSample
 uniform vec4 u_lineColor;
-uniform float u_capScale;
-uniform float u_aliasAmount;
+uniform float u_lineThickness;
+uniform vec2 u_p1;
+uniform vec2 u_p2;
+uniform vec2 u_stageSize;
 #endif // DRAW_MODE_lineSample
 
 uniform sampler2D u_skin;
@@ -210,14 +212,43 @@ void main()
 	#endif // DRAW_MODE_silhouette
 
 	#else // DRAW_MODE_lineSample
-	gl_FragColor = u_lineColor;
-	gl_FragColor.a *= clamp(
-		// Scale the capScale a little to have an aliased region.
-		(u_capScale + u_aliasAmount -
-			u_capScale * 2.0 * distance(v_texCoord, vec2(0.5, 0.5))
-		) / (u_aliasAmount + 1.0),
-		0.0,
-		1.0
+
+	// Maaaaagic antialiased-line-with-round-caps shader.
+	// Works in screen space.
+
+	vec2 scaledCoord = v_texCoord * u_stageSize;
+	vec2 pd = u_p2 - u_p1;
+	float lineLength = distance(u_p1, u_p2);
+
+	// This is another line, perpendicular to the one we *want* to draw,
+	// centered around the other line's midpoint and as thick as the other line is long.
+	float perpendicular = 1.0 - clamp(
+		abs(dot(pd, (scaledCoord - u_p1) / lineLength) - (lineLength / 2.0)) - (lineLength / 2.0),
+		0.0, 1.0
 	);
+
+	// The line itself, extending infinitely
+	float parallel = 1.0 - clamp(
+		(abs(
+			(pd.y * scaledCoord.x) - (pd.x * scaledCoord.y) + (u_p2.x * u_p1.y) - (u_p1.x * u_p2.y)
+		) / lineLength) - ((u_lineThickness - 1.0) * 0.5),
+		0.0, 1.0
+	);
+
+	// Intersect the line with the perpendicular mega-line
+	// This gives us a rectangle
+	// If p1 and p2 are the same, avoid errors
+	float line = min(parallel, perpendicular) - float(u_p1 == u_p2);
+
+	// Circular line caps
+	float cap1 = clamp(0.0 - (distance(u_p1, scaledCoord) - (u_lineThickness / 2.0)), 0.0, 1.0);
+	float cap2 = clamp(0.0 - (distance(u_p2, scaledCoord) - (u_lineThickness / 2.0)), 0.0, 1.0);
+
+	// Put it all together
+	float cappedLine = max(line, max(cap1, cap2));
+
+	gl_FragColor = u_lineColor * vec4(1, 1, 1, cappedLine);
+	//gl_FragColor = vec4(v_texCoord.x, v_texCoord.y, 0, 1);
+
 	#endif // DRAW_MODE_lineSample
 }
