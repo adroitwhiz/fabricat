@@ -15,13 +15,12 @@ renderer.updateDrawableProperties(drawableID, {
 
 var drawableID2 = renderer.createDrawable('group1');
 var wantBitmapSkin = false;
-var wantPenSkin = false;
 
 // Bitmap (squirrel)
 var image = new Image();
 image.addEventListener('load', () => {
     var bitmapSkinId = renderer.createBitmapSkin(image);
-    if (wantBitmapSkin && !wantPenSkin) {
+    if (wantBitmapSkin) {
         renderer.updateDrawableProperties(drawableID2, {
             skinId: bitmapSkinId
         });
@@ -34,7 +33,7 @@ image.src = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/7e24c99c1b853e
 var xhr = new XMLHttpRequest();
 xhr.addEventListener('load', function () {
     var skinId = renderer.createSVGSkin(xhr.responseText);
-    if (!(wantBitmapSkin || wantPenSkin)) {
+    if (!wantBitmapSkin) {
         renderer.updateDrawableProperties(drawableID2, {
             skinId: skinId
         });
@@ -42,27 +41,6 @@ xhr.addEventListener('load', function () {
 });
 xhr.open('GET', 'https://cdn.assets.scratch.mit.edu/internalapi/asset/f88bf1935daea28f8ca098462a31dbb0.svg/get/');
 xhr.send();
-
-if (wantPenSkin) {
-    var penSkinID = renderer.createPenSkin();
-
-    renderer.updateDrawableProperties(drawableID2, {
-        skinId: penSkinID
-    });
-
-    canvas.addEventListener('click', event => {
-        let rect = canvas.getBoundingClientRect();
-
-        let x = event.clientX - rect.left;
-        let y = event.clientY - rect.top;
-
-        renderer.penLine(penSkinID, {
-            color4f: [Math.random(), Math.random(), Math.random(), 1],
-            diameter: 8
-        },
-        x - 240, 180 - y, Math.random() * 480 - 240, Math.random() * 360 - 180);
-    });
-}
 
 var posX = 0;
 var posY = 0;
