@@ -241,8 +241,8 @@ void main()
 	float line = min(parallel, perpendicular) - float(u_p1 == u_p2);
 
 	// Circular line caps
-	float cap1 = clamp(-(distance(u_p1, scaledCoord) - (u_lineThickness / 2.0)), 0.0, 1.0);
-	float cap2 = clamp(-(distance(u_p2, scaledCoord) - (u_lineThickness / 2.0)), 0.0, 1.0);
+	float cap1 = clamp(0.5-(distance(u_p1, scaledCoord) - (u_lineThickness / 2.0)), 0.0, 1.0);
+	float cap2 = clamp(0.5-(distance(u_p2, scaledCoord) - (u_lineThickness / 2.0)), 0.0, 1.0);
 
 	// Put it all together
 	float cappedLine = max(line, max(cap1, cap2));
