@@ -126,7 +126,7 @@ class PenSkin extends Skin {
         this._stampShader = this._renderer._shaderManager.getShader(ShaderManager.DRAW_MODE.stamp, NO_EFFECTS);
 
         /** @type {twgl.ProgramInfo} */
-        this._lineShader = this._renderer._shaderManager.getShader(ShaderManager.DRAW_MODE.lineSample, NO_EFFECTS);
+        this._lineShader = this._renderer._shaderManager.getShader(ShaderManager.DRAW_MODE.line, NO_EFFECTS);
 
         this._createLineGeometry();
 

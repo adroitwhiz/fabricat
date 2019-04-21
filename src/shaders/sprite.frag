@@ -203,7 +203,7 @@ void main()
 
 	#endif // DRAW_MODE_silhouette
 
-	#else // DRAW_MODE_lineSample
+	#else // DRAW_MODE_line
 
 	// Maaaaagic antialiased-line-with-round-caps shader.
 	// Adapted from Inigo Quilez' 2D distance function cheat sheet
@@ -216,5 +216,5 @@ void main()
 
 	gl_FragColor = u_lineColor * vec4(1, 1, 1, cappedLine);
 
-	#endif // DRAW_MODE_lineSample
+	#endif // DRAW_MODE_line
 }
