@@ -1243,14 +1243,15 @@ class RenderWebGL extends EventEmitter {
         // Limit queries to the stage size.
         bounds.clamp(this._xLeft, this._xRight, this._yBottom, this._yTop);
 
-        // Use integer coordinates for queries - weird things happen
-        // when you provide float width/heights to gl.viewport and projection.
-        bounds.snapToInt();
-
         if (bounds.width === 0 || bounds.height === 0) {
             // No space to query.
             return null;
         }
+
+        // Use integer coordinates for queries - weird things happen
+        // when you provide float width/heights to gl.viewport and projection.
+        bounds.snapToInt();
+
         return bounds;
     }
 
