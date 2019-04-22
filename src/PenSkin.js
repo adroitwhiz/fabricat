@@ -211,10 +211,14 @@ class PenSkin extends Skin {
      * @param {number} y1 - the Y coordinate of the end of the line.
      */
     drawLine (penAttributes, x0, y0, x1, y1) {
+        // Width 1 and 3 lines need to be offset by 0.5.
+        const diameter = penAttributes.diameter || DefaultPenAttributes.diameter;
+        const offset = (Math.max(4 - diameter, 0) % 2) / 2;
+
         this._drawLineOnBuffer(
             penAttributes,
-            this._rotationCenter[0] + x0, this._rotationCenter[1] - y0,
-            this._rotationCenter[0] + x1, this._rotationCenter[1] - y1
+            this._rotationCenter[0] + x0 + offset, this._rotationCenter[1] - y0 + offset,
+            this._rotationCenter[0] + x1 + offset, this._rotationCenter[1] - y1 + offset
         );
 
         this._silhouetteDirty = true;
