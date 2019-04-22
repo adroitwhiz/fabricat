@@ -35,12 +35,12 @@ uniform float u_mosaic;
 uniform float u_ghost;
 #endif // ENABLE_ghost
 
-#ifdef DRAW_MODE_lineSample
+#ifdef DRAW_MODE_line
 uniform vec4 u_lineColor;
 uniform float u_lineThickness;
 uniform vec2 u_p1;
 uniform vec2 u_p2;
-#endif // DRAW_MODE_lineSample
+#endif // DRAW_MODE_line
 
 uniform sampler2D u_skin;
 
@@ -110,7 +110,7 @@ const vec2 kCenter = vec2(0.5, 0.5);
 
 void main()
 {
-	#ifndef DRAW_MODE_lineSample
+	#ifndef DRAW_MODE_line
 	vec2 texcoord0 = v_texCoord;
 
 	#ifdef ENABLE_mosaic
