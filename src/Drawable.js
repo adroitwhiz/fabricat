@@ -100,6 +100,19 @@ class Drawable {
         this._convexHullPoints = null;
         this._convexHullDirty = true;
 
+        // Create one Rectangle object and one array of points to pass to Rectangle.initFromPointsAABB
+        // for each type of bounding box we can get for this drawable.
+        // This avoids creating an enormous amount of twgl.v3 and Rectangle objects.
+
+        // The rough bounding box will always be initialized from 4 transformed AABB points,
+        // so we initialize that array of points here.
+        // The precise bounding box will be from the transformed convex hull points,
+        // so initialize it in setConvexHullPoints.
+        
+        this._AABB = new Rectangle();
+        this._transformedAABBPoints = [twgl.v3.create(), twgl.v3.create(), twgl.v3.create(), twgl.v3.create()];
+
+        this._preciseBounds = new Rectangle();
         this._transformedHullPoints = null;
         this._transformedHullDirty = true;
 
@@ -472,9 +485,8 @@ class Drawable {
         }
         const transformedHullPoints = this._getTransformedHullPoints();
         // Search through transformed points to generate box on axes.
-        const bounds = new Rectangle();
-        bounds.initFromPointsAABB(transformedHullPoints);
-        return bounds;
+        this._preciseBounds.initFromPointsAABB(transformedHullPoints);
+        return this._preciseBounds;
     }
 
     /**
@@ -495,9 +507,8 @@ class Drawable {
         const maxY = Math.max.apply(null, transformedHullPoints.map(p => p[1]));
         const filteredHullPoints = transformedHullPoints.filter(p => p[1] > maxY - slice);
         // Search through filtered points to generate box on axes.
-        const bounds = new Rectangle();
-        bounds.initFromPointsAABB(filteredHullPoints);
-        return bounds;
+        this._preciseBounds.initFromPointsAABB(filteredHullPoints);
+        return this._preciseBounds;
     }
 
     /**
@@ -514,14 +525,16 @@ class Drawable {
             this._calculateTransform();
         }
         const tm = this._uniforms.u_modelMatrix;
-        const bounds = new Rectangle();
-        bounds.initFromPointsAABB([
-            twgl.m4.transformPoint(tm, [-0.5, -0.5, 0]),
-            twgl.m4.transformPoint(tm, [0.5, -0.5, 0]),
-            twgl.m4.transformPoint(tm, [-0.5, 0.5, 0]),
-            twgl.m4.transformPoint(tm, [0.5, 0.5, 0])
-        ]);
-        return bounds;
+
+        twgl.m4.transformPoint(tm, [-0.5, -0.5, 0], this._transformedAABBPoints[0]);
+        twgl.m4.transformPoint(tm, [0.5, -0.5, 0], this._transformedAABBPoints[1]);
+        twgl.m4.transformPoint(tm, [-0.5, 0.5, 0], this._transformedAABBPoints[2]);
+        twgl.m4.transformPoint(tm, [0.5, 0.5, 0], this._transformedAABBPoints[3]);
+
+        this._AABB.initFromPointsAABB(this._transformedAABBPoints);
+        return this._AABB;
+
+        
     }
 
     /**
