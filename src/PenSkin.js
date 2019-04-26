@@ -327,8 +327,17 @@ class PenSkin extends Skin {
         const top = Math.floor(Math.min(y0, y1) - radius) - 1;
         const bottom = Math.floor(Math.max(y0, y1) + radius) + 1;
 
-        twgl.m4.translate(transformMatrix, [(left / 240) - 1, (top / 180) - 1, 0], transformMatrix);
-        twgl.m4.scale(transformMatrix, [(right - left) / 480, (bottom - top) / 360, 1], transformMatrix);
+        const width = this._bounds.width;
+        const height = this._bounds.height;
+
+        twgl.m4.translate(transformMatrix, [
+            (left / (width * 0.5)) - 1,
+            (top / (height * 0.5)) - 1, 0
+        ], transformMatrix);
+        twgl.m4.scale(transformMatrix, [
+            (right - left) / width,
+            (bottom - top) / height, 1
+        ], transformMatrix);
         twgl.m4.translate(transformMatrix, [1, 1, 0], transformMatrix);
 
         // All line-drawing work is done via shader--pass these parameters into it.
