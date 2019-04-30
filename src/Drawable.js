@@ -424,7 +424,7 @@ class Drawable {
         // We only do this when the hull points change to avoid unnecessary allocations and GC.
         this._transformedHullPoints = [];
         for (let i = 0; i < points.length; i++) {
-            this._transformedHullPoints.push(twgl.v3.create(0, 0, 0));
+            this._transformedHullPoints.push(twgl.v3.create());
         }
         this._transformedHullDirty = true;
     }
