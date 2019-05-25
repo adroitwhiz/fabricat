@@ -1,4 +1,3 @@
-const twgl = require('twgl.js');
 const matrix = require('gl-matrix');
 
 const Rectangle = require('./Rectangle');
@@ -9,7 +8,7 @@ const Skin = require('./Skin');
 /**
  * An internal workspace for calculating texture locations from world vectors
  * this is REUSED for memory conservation reasons
- * @type {twgl.v3}
+ * @type {matrix.vec2}
  */
 const __isTouchingPosition = matrix.vec2.create();
 
@@ -20,8 +19,8 @@ const __isTouchingPosition = matrix.vec2.create();
  * the drawable inverseMatrix is up to date.
  *
  * @param {Drawable} drawable The drawable to get the inverse matrix and uniforms from
- * @param {twgl.v3} vec [x,y] scratch space vector
- * @return {twgl.v3} [x,y] texture space float vector - transformed by effects and matrix
+ * @param {matrix.vec2} vec [x,y] scratch space vector
+ * @return {matrix.vec2} [x,y] texture space float vector - transformed by effects and matrix
  */
 const getLocalPosition = (drawable, vec) => {
     // Transfrom from world coordinates to Drawable coordinates.
@@ -67,25 +66,8 @@ class Drawable {
 
         this.transformMatrix = matrix.mat2d.create();
 
-        /**
-         * The uniforms to be used by the vertex and pixel shaders.
-         * Some of these are used by other parts of the renderer as well.
-         * @type {Object.<string,*>}
-         * @private
-         */
-        this._uniforms = {
-            /**
-             * The model matrix, to concat with projection at draw time.
-             * @type {module:twgl/m4.Mat4}
-             */
-            u_modelMatrix: twgl.m4.identity(),
-
-            /**
-             * The color to use in the silhouette draw mode.
-             * @type {Array<number>}
-             */
-            u_silhouetteColor: Drawable.color4fFromID(this._id)
-        };
+        // TODO
+        this._effects = [];
 
         // Effect values are uniforms too
         const numEffects = ShaderManager.EFFECTS.length;
@@ -93,7 +75,7 @@ class Drawable {
             const effectName = ShaderManager.EFFECTS[index];
             const effectInfo = ShaderManager.EFFECT_INFO[effectName];
             const converter = effectInfo.converter;
-            this._uniforms[effectInfo.uniformName] = converter(0);
+            this._effects[effectInfo.uniformName] = converter(0);
         }
 
         this._position = matrix.vec2.create();
@@ -284,14 +266,6 @@ class Drawable {
         if (this._rotationTransformDirty) {
             const rotation = (90 - this._direction) * Math.PI / 180;
 
-            // Calling rotationZ sets the destination matrix to a rotation
-            // around the Z axis setting matrix components 0, 1, 4 and 5 with
-            // cosine and sine values of the rotation.
-            // twgl.m4.rotationZ(rotation, this._rotationMatrix);
-
-            // twgl assumes the last value set to the matrix was anything.
-            // Drawable knows, it was another rotationZ matrix, so we can skip
-            // assigning the values that will never change.
             const c = Math.cos(rotation);
             const s = Math.sin(rotation);
             this._rotationMatrix[0] = c;
@@ -388,7 +362,7 @@ class Drawable {
 
     /**
      * Check if the world position touches the skin.
-     * @param {twgl.v3} vec World coordinate vector.
+     * @param {matrix.vec2} vec World coordinate vector.
      * @return {boolean} True if the world position touches the skin.
      */
     isTouching (vec) {
@@ -600,7 +574,7 @@ class Drawable {
 
     /**
      * Sample a color from a drawable's texture.
-     * @param {twgl.v3} vec The scratch space [x,y] vector
+     * @param {matrix.vec2} vec The scratch space [x,y] vector
      * @param {Drawable} drawable The drawable to sample the texture from
      * @param {Uint8ClampedArray} dst The "color4b" representation of the texture at point.
      * @returns {Uint8ClampedArray} The dst object filled with the color4b

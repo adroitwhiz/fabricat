@@ -202,7 +202,6 @@ class Silhouette {
     static _updateCanvas () {
         if (typeof __SilhouetteUpdateCanvas === 'undefined') {
             __SilhouetteUpdateCanvas = document.createElement('canvas');
-            document.body.appendChild(__SilhouetteUpdateCanvas);
         }
         return __SilhouetteUpdateCanvas;
     }

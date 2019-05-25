@@ -14,11 +14,7 @@ const log = require('./util/log');
 const __isTouchingDrawablesPoint = matrix.vec2.create();
 const __candidatesBounds = new Rectangle();
 const __touchingColor = new Uint8ClampedArray(4);
-const __blendColor = new Uint8ClampedArray(4);
-
-// More pixels than this and we give up to the GPU and take the cost of readPixels
-// Width * Height * Number of drawables at location
-const __cpuTouchingColorPixelCount = 4e4;
+const __blendColor = new Uint8ClampedArray(4)
 
 /**
  * @callback RenderCanvas#idFilterFunc
@@ -94,7 +90,7 @@ class RenderCanvas extends EventEmitter {
     }
 
     /**
-     * Create a renderer for drawing Scratch sprites to a canvas using WebGL.
+     * Create a renderer for drawing Scratch sprites to a canvas using the 2d canvas API.
      * Coordinates will default to Scratch 2.0 values if unspecified.
      * The stage's "native" size will be calculated from the these coordinates.
      * For example, the defaults result in a native size of 480x360.
@@ -181,7 +177,7 @@ class RenderCanvas extends EventEmitter {
      * @returns {HTMLCanvasElement} the canvas of the WebGL rendering context associated with this renderer.
      */
     get canvas () {
-        return this._gl && this._gl.canvas;
+        return this.ctx.canvas;
     }
 
     /**
@@ -605,11 +601,10 @@ class RenderCanvas extends EventEmitter {
         const bounds = drawable.getFastBounds();
         // In debug mode, draw the bounds.
         if (this._debugCanvas) {
-            const gl = this._gl;
-            this._debugCanvas.width = gl.canvas.width;
-            this._debugCanvas.height = gl.canvas.height;
+            this._debugCanvas.width = this.ctx.canvas.width;
+            this._debugCanvas.height = this.ctx.canvas.height;
             const context = this._debugCanvas.getContext('2d');
-            context.drawImage(gl.canvas, 0, 0);
+            context.drawImage(this.ctx.canvas, 0, 0);
             context.strokeStyle = '#FF0000';
             const pr = window.devicePixelRatio;
             context.strokeRect(
@@ -638,11 +633,10 @@ class RenderCanvas extends EventEmitter {
         const bounds = drawable.getBoundsForBubble();
         // In debug mode, draw the bounds.
         if (this._debugCanvas) {
-            const gl = this._gl;
-            this._debugCanvas.width = gl.canvas.width;
-            this._debugCanvas.height = gl.canvas.height;
+            this._debugCanvas.width = this.ctx.canvas.width;
+            this._debugCanvas.height = this.ctx.canvas.height;
             const context = this._debugCanvas.getContext('2d');
-            context.drawImage(gl.canvas, 0, 0);
+            context.drawImage(this.ctx.canvas, 0, 0);
             context.strokeStyle = '#FF0000';
             const pr = window.devicePixelRatio;
             context.strokeRect(
@@ -758,8 +752,6 @@ class RenderCanvas extends EventEmitter {
         const drawable = this._allDrawables[drawableID];
         const point = __isTouchingDrawablesPoint;
 
-        // This is an EXTREMELY brute force collision detector, but it is
-        // still faster than asking the GPU to give us the pixels.
         for (let x = bounds.left; x <= bounds.right; x++) {
             // Scratch Space - +y is top
             point[0] = x;
@@ -959,7 +951,6 @@ class RenderCanvas extends EventEmitter {
 
         const dstCanvas = this._tempCanvas;
         const dstCtx = dstCanvas.getContext('2d');
-        document.body.appendChild(dstCanvas);
 
         dstCanvas.width = bounds.width;
         dstCanvas.height = bounds.height;
@@ -1082,8 +1073,7 @@ class RenderCanvas extends EventEmitter {
         // Limit queries to the stage size.
         bounds.clamp(this._xLeft, this._xRight, this._yBottom, this._yTop);
 
-        // Use integer coordinates for queries - weird things happen
-        // when you provide float width/heights to gl.viewport and projection.
+        // Use integer coordinates for queries
         bounds.snapToInt();
 
         if (bounds.width === 0 || bounds.height === 0) {

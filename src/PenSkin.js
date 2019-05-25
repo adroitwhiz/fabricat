@@ -76,12 +76,9 @@ class PenSkin extends Skin {
     }
 
     /**
-     * @return {WebGLTexture} The GL texture representation of this skin when drawing at the given size.
-     * @param {int} pixelsWide - The width that the skin will be rendered at, in GPU pixels.
-     * @param {int} pixelsTall - The height that the skin will be rendered at, in GPU pixels.
+     * @return {HTMLCanvasElement} a draw-able canvas of this pen skin
      */
-    // eslint-disable-next-line no-unused-vars
-    getTexture (pixelsWide, pixelsTall) {
+    getTexture () {
         return this._canvas;
     }
 
