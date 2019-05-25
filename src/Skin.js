@@ -34,26 +34,6 @@ class Skin extends EventEmitter {
         this._rotationCenter = matrix.vec2.create();
 
         /**
-         * The uniforms to be used by the vertex and pixel shaders.
-         * Some of these are used by other parts of the renderer as well.
-         * @type {Object.<string,*>}
-         * @private
-         */
-        this._uniforms = {
-            /**
-             * The nominal (not necessarily current) size of the current skin.
-             * @type {Array<number>}
-             */
-            u_skinSize: [0, 0],
-
-            /**
-             * The actual WebGL texture object for the skin.
-             * @type {WebGLTexture}
-             */
-            u_skin: null
-        };
-
-        /**
          * A silhouette to store touching data, skins are responsible for keeping it up to date.
          * @private
          */
@@ -157,17 +137,6 @@ class Skin extends EventEmitter {
      */
     getFenceBounds (drawable) {
         return drawable.getFastBounds();
-    }
-
-    /**
-     * Update and returns the uniforms for this skin.
-     * @param {Array<number>} scale - The scaling factors to be used.
-     * @returns {object.<string, *>} the shader uniforms to be used when rendering with this Skin.
-     */
-    getUniforms (scale) {
-        this._uniforms.u_skin = this.getTexture(scale);
-        this._uniforms.u_skinSize = this.size;
-        return this._uniforms;
     }
 
     /**

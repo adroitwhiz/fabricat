@@ -1274,9 +1274,8 @@ class RenderCanvas extends EventEmitter {
      * @param {module:matrix.mat2d} projection The projection matrix to use.
      * @param {object} [opts] Options for drawing
      * @param {idFilterFunc} opts.filter An optional filter function.
-     * @param {object.<string,*>} opts.extraUniforms Extra uniforms for the shaders.
      * @param {int} opts.effectMask Bitmask for effects to allow
-     * @param {boolean} opts.ignoreVisibility Draw all, despite visibility (e.g. stamping, touching color)
+     * @param {boolean} opts.ignoreVisibility Draw all, despite visibility (e.g. stamping, touching color) TODO
      * @param {HTMLCanvasElement} opts.dstCanvas The destination canvas to draw to
      * @private
      */

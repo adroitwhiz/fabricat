@@ -18,7 +18,7 @@ const __isTouchingPosition = matrix.vec2.create();
  * if you ever need to get two local positions and store both.  Requires that
  * the drawable inverseMatrix is up to date.
  *
- * @param {Drawable} drawable The drawable to get the inverse matrix and uniforms from
+ * @param {Drawable} drawable The drawable to get the inverse matrix from
  * @param {matrix.vec2} vec [x,y] scratch space vector
  * @return {matrix.vec2} [x,y] texture space float vector - transformed by effects and matrix
  */
@@ -69,7 +69,6 @@ class Drawable {
         // TODO
         this._effects = [];
 
-        // Effect values are uniforms too
         const numEffects = ShaderManager.EFFECTS.length;
         for (let index = 0; index < numEffects; ++index) {
             const effectName = ShaderManager.EFFECTS[index];
@@ -250,7 +249,7 @@ class Drawable {
                     this._effectBits &= ~effectInfo.mask;
                 }
                 const converter = effectInfo.converter;
-                this._uniforms[effectInfo.uniformName] = converter(rawValue);
+                this._effects[effectInfo.uniformName] = converter(rawValue);
                 if (effectInfo.shapeChanges) {
                     this.setConvexHullDirty();
                 }
