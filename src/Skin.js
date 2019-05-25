@@ -1,6 +1,6 @@
 const EventEmitter = require('events');
 
-const twgl = require('twgl.js');
+const matrix = require('gl-matrix');
 
 const RenderConstants = require('./RenderConstants');
 const Silhouette = require('./Silhouette');
@@ -30,8 +30,8 @@ class Skin extends EventEmitter {
         /** @type {int} */
         this._id = id;
 
-        /** @type {Vec3} */
-        this._rotationCenter = twgl.v3.create(0, 0);
+        /** @type {Vec2} */
+        this._rotationCenter = matrix.vec2.create();
 
         /**
          * The uniforms to be used by the vertex and pixel shaders.
@@ -106,6 +106,13 @@ class Skin extends EventEmitter {
     }
 
     /**
+     * @return {Array<number>} the ratio of this skin's "native" size to its texture's size.
+     */
+    get sizeRatio () {
+        return [1, 1];
+    }
+
+    /**
      * Set the origin, in object space, about which this Skin should rotate.
      * @param {number} x - The x coordinate of the new rotation center.
      * @param {number} y - The y coordinate of the new rotation center.
@@ -173,7 +180,7 @@ class Skin extends EventEmitter {
     /**
      * Does this point touch an opaque or translucent point on this skin?
      * Nearest Neighbor version
-     * @param {twgl.v3} vec A texture coordinate.
+     * @param {matrix.vec2} vec A texture coordinate.
      * @return {boolean} Did it touch?
      */
     isTouchingNearest (vec) {
@@ -183,7 +190,7 @@ class Skin extends EventEmitter {
     /**
      * Does this point touch an opaque or translucent point on this skin?
      * Linear Interpolation version
-     * @param {twgl.v3} vec A texture coordinate.
+     * @param {matrix.vec2} vec A texture coordinate.
      * @return {boolean} Did it touch?
      */
     isTouchingLinear (vec) {

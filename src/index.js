@@ -1,7 +1,7 @@
-const RenderWebGL = require('./RenderWebGL');
+const RenderCanvas = require('./RenderCanvas');
 
 /**
  * Export for NPM & Node.js
- * @type {RenderWebGL}
+ * @type {RenderCanvas}
  */
-module.exports = RenderWebGL;
+module.exports = RenderCanvas;

@@ -1,17 +1,18 @@
 const twgl = require('twgl.js');
+const matrix = require('gl-matrix');
+window.matrix = matrix;
 
 const Rectangle = require('./Rectangle');
 const RenderConstants = require('./RenderConstants');
 const ShaderManager = require('./ShaderManager');
 const Skin = require('./Skin');
-const EffectTransform = require('./EffectTransform');
 
 /**
  * An internal workspace for calculating texture locations from world vectors
  * this is REUSED for memory conservation reasons
  * @type {twgl.v3}
  */
-const __isTouchingPosition = twgl.v3.create();
+const __isTouchingPosition = matrix.vec2.create();
 
 /**
  * Convert a scratch space location into a texture space float.  Uses the
@@ -31,28 +32,41 @@ const getLocalPosition = (drawable, vec) => {
     const m = drawable._inverseMatrix;
     // var v2 = v[2];
     const d = (v0 * m[3]) + (v1 * m[7]) + m[15];
-    // The RenderWebGL quad flips the texture's X axis. So rendered bottom
+    // The RenderCanvas quad flips the texture's X axis. So rendered bottom
     // left is 1, 0 and the top right is 0, 1. Flip the X axis so
     // localPosition matches that transformation.
     localPosition[0] = 0.5 - (((v0 * m[0]) + (v1 * m[4]) + m[12]) / d);
     localPosition[1] = (((v0 * m[1]) + (v1 * m[5]) + m[13]) / d) + 0.5;
+
+    matrix.vec2.transformMat2d(localPosition, vec, m);
+
+    const skinSize = drawable.skin.size;
+    const skinRatio = drawable.skin.sizeRatio;
+    localPosition[0] /= (skinSize[0] / skinRatio[0]);
+    localPosition[1] /= (skinSize[1] / skinRatio[1]);
+
     // Apply texture effect transform if the localPosition is within the drawable's space.
-    if ((localPosition[0] >= 0 && localPosition[0] < 1) && (localPosition[1] >= 0 && localPosition[1] < 1)) {
+    // Disabled for now because effects aren't implemented.
+    /* if ((localPosition[0] >= 0 && localPosition[0] < 1) && (localPosition[1] >= 0 && localPosition[1] < 1)) {
         EffectTransform.transformPoint(drawable, localPosition, localPosition);
-    }
+    } */
     return localPosition;
 };
 
 class Drawable {
     /**
      * An object which can be drawn by the renderer.
-     * @todo double-buffer all rendering state (position, skin, effects, etc.)
      * @param {!int} id - This Drawable's unique ID.
+     * @param {!RenderCanvas} renderer - The renderer which will use this skin.
      * @constructor
      */
-    constructor (id) {
+    constructor (id, renderer) {
         /** @type {!int} */
         this._id = id;
+
+        this._renderer = renderer;
+
+        this.transformMatrix = matrix.mat2d.create();
 
         /**
          * The uniforms to be used by the vertex and pixel shaders.
@@ -83,26 +97,55 @@ class Drawable {
             this._uniforms[effectInfo.uniformName] = converter(0);
         }
 
-        this._position = twgl.v3.create(0, 0);
-        this._scale = twgl.v3.create(100, 100);
+        this._position = matrix.vec2.create();
+        this._scale = matrix.vec2.fromValues(100, 100);
         this._direction = 90;
         this._transformDirty = true;
-        this._rotationMatrix = twgl.m4.identity();
+        this._translationMatrix = matrix.mat2d.create();
+        this._scaleMatrix = matrix.mat2d.create();
+        this._rotationMatrix = matrix.mat2d.create();
         this._rotationTransformDirty = true;
-        this._rotationAdjusted = twgl.v3.create();
+        this._rotationCenter = matrix.vec2.create();
         this._rotationCenterDirty = true;
-        this._skinScale = twgl.v3.create(0, 0, 0);
+        this._skinScale = matrix.vec2.create();
         this._skinScaleDirty = true;
-        this._inverseMatrix = twgl.m4.identity();
+        this._inverseMatrix = matrix.mat2d.create();
         this._inverseTransformDirty = true;
         this._visible = true;
         this._effectBits = 0;
 
+        this._boundsMatrix = matrix.mat2d.create();
+
+        this._aabbPoints = [
+            matrix.vec2.create(),
+            matrix.vec2.create(),
+            matrix.vec2.create(),
+            matrix.vec2.create()
+        ];
+        this._transformedAABBPoints = [
+            matrix.vec2.create(),
+            matrix.vec2.create(),
+            matrix.vec2.create(),
+            matrix.vec2.create()
+        ];
+        this._aabbDirty = true;
+        this._aabb = new Rectangle();
+        
         /** @todo move convex hull functionality, maybe bounds functionality overall, to Skin classes */
         this._convexHullPoints = null;
+        this._transformedHullPoints = null;
         this._convexHullDirty = true;
+        this._convexHullMatrix = matrix.mat2d.create();
+        this._preciseBounds = new Rectangle();
 
         this._skinWasAltered = this._skinWasAltered.bind(this);
+    }
+
+    /**
+     * Draw this drawable to the renderer's canvas.
+     */
+    draw () {
+
     }
 
     /**
@@ -166,14 +209,11 @@ class Drawable {
         return this._effectBits;
     }
 
-    /**
-     * @returns {object.<string, *>} the shader uniforms to be used when rendering this Drawable.
-     */
-    getUniforms () {
+    getTransform () {
         if (this._transformDirty) {
             this._calculateTransform();
         }
-        return this._uniforms;
+        return this.transformMatrix;
     }
 
     /**
@@ -243,7 +283,7 @@ class Drawable {
      */
     _calculateTransform () {
         if (this._rotationTransformDirty) {
-            const rotation = (270 - this._direction) * Math.PI / 180;
+            const rotation = (90 - this._direction) * Math.PI / 180;
 
             // Calling rotationZ sets the destination matrix to a rotation
             // around the Z axis setting matrix components 0, 1, 4 and 5 with
@@ -257,126 +297,55 @@ class Drawable {
             const s = Math.sin(rotation);
             this._rotationMatrix[0] = c;
             this._rotationMatrix[1] = s;
-            // this._rotationMatrix[2] = 0;
-            // this._rotationMatrix[3] = 0;
-            this._rotationMatrix[4] = -s;
-            this._rotationMatrix[5] = c;
-            // this._rotationMatrix[6] = 0;
-            // this._rotationMatrix[7] = 0;
-            // this._rotationMatrix[8] = 0;
-            // this._rotationMatrix[9] = 0;
-            // this._rotationMatrix[10] = 1;
-            // this._rotationMatrix[11] = 0;
-            // this._rotationMatrix[12] = 0;
-            // this._rotationMatrix[13] = 0;
-            // this._rotationMatrix[14] = 0;
-            // this._rotationMatrix[15] = 1;
+            this._rotationMatrix[2] = -s;
+            this._rotationMatrix[3] = c;
 
             this._rotationTransformDirty = false;
         }
 
         // Adjust rotation center relative to the skin.
         if (this._rotationCenterDirty && this.skin !== null) {
-            // twgl version of the following in function work.
-            // let rotationAdjusted = twgl.v3.subtract(
-            //     this.skin.rotationCenter,
-            //     twgl.v3.divScalar(this.skin.size, 2, this._rotationAdjusted),
-            //     this._rotationAdjusted
-            // );
-            // rotationAdjusted = twgl.v3.multiply(
-            //     rotationAdjusted, this._scale, rotationAdjusted
-            // );
-            // rotationAdjusted = twgl.v3.divScalar(
-            //     rotationAdjusted, 100, rotationAdjusted
-            // );
-            // rotationAdjusted[1] *= -1; // Y flipped to Scratch coordinate.
-            // rotationAdjusted[2] = 0; // Z coordinate is 0.
+            const sizeRatio = this.skin.sizeRatio;
+            const sizeRatio0 = sizeRatio[0];
+            const sizeRatio1 = sizeRatio[1];
 
-            // Locally assign rotationCenter and skinSize to keep from having
-            // the Skin getter properties called twice while locally assigning
-            // their components for readability.
-            const rotationCenter = this.skin.rotationCenter;
-            const skinSize = this.skin.size;
-            const center0 = rotationCenter[0];
-            const center1 = rotationCenter[1];
-            const skinSize0 = skinSize[0];
-            const skinSize1 = skinSize[1];
-            const scale0 = this._scale[0];
-            const scale1 = this._scale[1];
-
-            const rotationAdjusted = this._rotationAdjusted;
-            rotationAdjusted[0] = (center0 - (skinSize0 / 2)) * scale0 / 100;
-            rotationAdjusted[1] = ((center1 - (skinSize1 / 2)) * scale1 / 100) * -1;
-            // rotationAdjusted[2] = 0;
+            const skinCenter = this.skin.rotationCenter;
+            const center0 = skinCenter[0];
+            const center1 = skinCenter[1];
+            const rotationCenter = this._rotationCenter;
+            rotationCenter[0] = Math.round(center0) / sizeRatio0;
+            rotationCenter[1] = Math.round(center1) / sizeRatio1;
 
             this._rotationCenterDirty = false;
         }
 
         if (this._skinScaleDirty && this.skin !== null) {
-            // twgl version of the following in function work.
-            // const scaledSize = twgl.v3.divScalar(
-            //     twgl.v3.multiply(this.skin.size, this._scale),
-            //     100
-            // );
-            // // was NaN because the vectors have only 2 components.
-            // scaledSize[2] = 0;
+            const sizeRatio = this.skin.sizeRatio;
 
-            // Locally assign skinSize to keep from having the Skin getter
-            // properties called twice.
-            const skinSize = this.skin.size;
-            const scaledSize = this._skinScale;
-            scaledSize[0] = skinSize[0] * this._scale[0] / 100;
-            scaledSize[1] = skinSize[1] * this._scale[1] / 100;
-            // scaledSize[2] = 0;
+            this._scaleMatrix[0] = sizeRatio[0] * this._scale[0] * 0.01;
+            this._scaleMatrix[3] = sizeRatio[1] * this._scale[1] * -0.01;
 
             this._skinScaleDirty = false;
         }
 
-        const modelMatrix = this._uniforms.u_modelMatrix;
-
-        // twgl version of the following in function work.
-        // twgl.m4.identity(modelMatrix);
-        // twgl.m4.translate(modelMatrix, this._position, modelMatrix);
-        // twgl.m4.multiply(modelMatrix, this._rotationMatrix, modelMatrix);
-        // twgl.m4.translate(modelMatrix, this._rotationAdjusted, modelMatrix);
-        // twgl.m4.scale(modelMatrix, scaledSize, modelMatrix);
-
-        // Drawable configures a 3D matrix for drawing in WebGL, but most values
-        // will never be set because the inputs are on the X and Y position axis
-        // and the Z rotation axis. Drawable can bring the work inside
-        // _calculateTransform and greatly reduce the ammount of math and array
-        // assignments needed.
-
-        const scale0 = this._skinScale[0];
-        const scale1 = this._skinScale[1];
-        const rotation00 = this._rotationMatrix[0];
-        const rotation01 = this._rotationMatrix[1];
-        const rotation10 = this._rotationMatrix[4];
-        const rotation11 = this._rotationMatrix[5];
-        const adjusted0 = this._rotationAdjusted[0];
-        const adjusted1 = this._rotationAdjusted[1];
         const position0 = this._position[0];
         const position1 = this._position[1];
+        const rotationCenter = this._rotationCenter;
+        const center0 = rotationCenter[0];
+        const center1 = rotationCenter[1];
 
-        // Commented assignments show what the values are when the matrix was
-        // instantiated. Those values will never change so they do not need to
-        // be reassigned.
-        modelMatrix[0] = scale0 * rotation00;
-        modelMatrix[1] = scale0 * rotation01;
-        // modelMatrix[2] = 0;
-        // modelMatrix[3] = 0;
-        modelMatrix[4] = scale1 * rotation10;
-        modelMatrix[5] = scale1 * rotation11;
-        // modelMatrix[6] = 0;
-        // modelMatrix[7] = 0;
-        // modelMatrix[8] = 0;
-        // modelMatrix[9] = 0;
-        // modelMatrix[10] = 1;
-        // modelMatrix[11] = 0;
-        modelMatrix[12] = (rotation00 * adjusted0) + (rotation10 * adjusted1) + position0;
-        modelMatrix[13] = (rotation01 * adjusted0) + (rotation11 * adjusted1) + position1;
-        // modelMatrix[14] = 0;
-        // modelMatrix[15] = 1;
+        this._translationMatrix = matrix.mat2d.fromValues(1, 0, 0, 1, position0, position1);
+
+        const transformMatrix = this.transformMatrix;
+
+        matrix.mat2d.identity(transformMatrix);
+
+        matrix.mat2d.set(transformMatrix, 1, 0, 0, 1, Math.round(-center0), Math.round(-center1));
+
+        matrix.mat2d.multiply(transformMatrix, this._scaleMatrix, transformMatrix);
+        matrix.mat2d.multiply(transformMatrix, this._rotationMatrix, transformMatrix);
+        matrix.mat2d.multiply(transformMatrix, this._translationMatrix, transformMatrix);
+        
 
         this._transformDirty = false;
     }
@@ -398,11 +367,23 @@ class Drawable {
     }
 
     /**
+     * Set the AABB to be dirty.
+     * Do this whenever the Drawable's shape has possibly changed.
+     */
+    setAABBDirty () {
+        this._AABBDirty = true;
+    }
+
+    /**
      * Set the convex hull points for the Drawable.
      * @param {Array<Array<number>>} points Convex hull points, as [[x, y], ...]
      */
     setConvexHullPoints (points) {
         this._convexHullPoints = points;
+        this._transformedHullPoints = [];
+        for (let i = 0; i < points.length; i++) {
+            this._transformedHullPoints.push(matrix.vec2.create());
+        }
         this._convexHullDirty = false;
     }
 
@@ -503,14 +484,26 @@ class Drawable {
         if (this._transformDirty) {
             this._calculateTransform();
         }
-        const tm = this._uniforms.u_modelMatrix;
-        const bounds = new Rectangle();
-        bounds.initFromPointsAABB([
-            twgl.m4.transformPoint(tm, [-0.5, -0.5, 0]),
-            twgl.m4.transformPoint(tm, [0.5, -0.5, 0]),
-            twgl.m4.transformPoint(tm, [-0.5, 0.5, 0]),
-            twgl.m4.transformPoint(tm, [0.5, 0.5, 0])
-        ]);
+        if (this._AABBDirty) {
+            const skin = this.skin;
+            const size0 = skin.size[0] / skin.sizeRatio[0];
+            const size1 = skin.size[1] / skin.sizeRatio[1];
+            matrix.vec2.set(this._aabbPoints[1], size0, 0);
+            matrix.vec2.set(this._aabbPoints[2], size0, size1);
+            matrix.vec2.set(this._aabbPoints[3], 0, size1);
+        }
+
+        const tm = this.transformMatrix;
+        const bounds = this._aabb;
+        const aabbPoints = this._aabbPoints;
+        const transformedPoints = this._transformedAABBPoints;
+
+        matrix.vec2.transformMat2d(transformedPoints[0], aabbPoints[0], tm);
+        matrix.vec2.transformMat2d(transformedPoints[1], aabbPoints[1], tm);
+        matrix.vec2.transformMat2d(transformedPoints[2], aabbPoints[2], tm);
+        matrix.vec2.transformMat2d(transformedPoints[3], aabbPoints[3], tm);
+
+        bounds.initFromPointsAABB(transformedPoints);
         return bounds;
     }
 
@@ -536,23 +529,15 @@ class Drawable {
      * @private
      */
     _getTransformedHullPoints () {
-        const projection = twgl.m4.ortho(-1, 1, -1, 1, -1, 1);
-        const skinSize = this.skin.size;
-        const halfXPixel = 1 / skinSize[0] / 2;
-        const halfYPixel = 1 / skinSize[1] / 2;
-        const tm = twgl.m4.multiply(this._uniforms.u_modelMatrix, projection);
-        const transformedHullPoints = [];
+        matrix.mat2d.scale(this._convexHullMatrix, this.transformMatrix, this.skin.sizeRatio);
         for (let i = 0; i < this._convexHullPoints.length; i++) {
-            const point = this._convexHullPoints[i];
-            const glPoint = twgl.v3.create(
-                0.5 + (-point[0] / skinSize[0]) - halfXPixel,
-                (point[1] / skinSize[1]) - 0.5 + halfYPixel,
-                0
+            matrix.vec2.transformMat2d(
+                this._transformedHullPoints[i],
+                this._convexHullPoints[i],
+                this._convexHullMatrix
             );
-            twgl.m4.transformPoint(tm, glPoint, glPoint);
-            transformedHullPoints.push(glPoint);
         }
-        return transformedHullPoints;
+        return this._transformedHullPoints;
     }
 
     /**
@@ -566,12 +551,7 @@ class Drawable {
         // Get the inverse of the model matrix or update it.
         if (this._inverseTransformDirty) {
             const inverse = this._inverseMatrix;
-            twgl.m4.copy(this._uniforms.u_modelMatrix, inverse);
-            // The normal matrix uses a z scaling of 0 causing model[10] to be
-            // 0. Getting a 4x4 inverse is impossible without a scaling in x, y,
-            // and z.
-            inverse[10] = 1;
-            twgl.m4.inverse(inverse, inverse);
+            matrix.mat2d.invert(inverse, this.transformMatrix);
             this._inverseTransformDirty = false;
         }
     }
@@ -584,6 +564,7 @@ class Drawable {
         this._rotationCenterDirty = true;
         this._skinScaleDirty = true;
         this.setConvexHullDirty();
+        this.setAABBDirty();
         this.setTransformDirty();
     }
 
@@ -627,7 +608,11 @@ class Drawable {
      */
     static sampleColor4b (vec, drawable, dst) {
         const localPosition = getLocalPosition(drawable, vec);
-        if (localPosition[0] < 0 || localPosition[1] < 0 ||
+
+        return drawable.skin._silhouette.colorAtNearest(localPosition, dst);
+
+        // TODO: reimplement for certain effects
+        /* if (localPosition[0] < 0 || localPosition[1] < 0 ||
             localPosition[0] > 1 || localPosition[1] > 1) {
             dst[3] = 0;
             return dst;
@@ -637,7 +622,7 @@ class Drawable {
         // drawable.useNearest ?
              drawable.skin._silhouette.colorAtNearest(localPosition, dst);
         // : drawable.skin._silhouette.colorAtLinear(localPosition, dst);
-        return EffectTransform.transformColor(drawable, textColor, textColor);
+        return EffectTransform.transformColor(drawable, textColor, textColor); */
     }
 }
 

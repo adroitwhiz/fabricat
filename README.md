@@ -30,7 +30,7 @@ var canvas = document.getElementById('myStage');
 var debug = document.getElementById('myDebug');
 
 // Instantiate the renderer
-var renderer = new require('scratch-render')(canvas);
+var renderer = new require('fabricat')(canvas);
 
 // Connect to debug canvas
 renderer.setDebugCanvas(debug);
@@ -55,7 +55,7 @@ npm run build
 ```html
 <script src="/path/to/render.js"></script>
 <script>
-    var renderer = new window.RenderWebGLLocal();
+    var renderer = new window.RenderCanvasLocal();
     // do things
 </script>
 ```

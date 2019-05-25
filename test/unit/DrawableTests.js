@@ -1,6 +1,6 @@
 const test = require('tap').test;
 
-// Mock `window` and `document.createElement` for twgl.js.
+// Mock `window` and `document.createElement`
 global.window = {};
 global.document = {
     createElement: () => ({getContext: () => {}})

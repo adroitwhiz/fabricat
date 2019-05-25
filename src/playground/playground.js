@@ -1,10 +1,12 @@
-const ScratchRender = require('../RenderWebGL');
+const ScratchRender = require('../RenderCanvas');
 const getMousePosition = require('./getMousePosition');
 
 const canvas = document.getElementById('scratch-stage');
 let fudge = 90;
 const renderer = new ScratchRender(canvas);
 renderer.setLayerGroupOrdering(['group1']);
+
+window.renderer = renderer;
 
 const drawableID = renderer.createDrawable('group1');
 renderer.updateDrawableProperties(drawableID, {
@@ -20,33 +22,36 @@ const WantedSkinType = {
 };
 
 const drawableID2 = renderer.createDrawable('group1');
-const wantedSkin = WantedSkinType.vector;
+const wantedSkin = WantedSkinType.bitmap;
 
-// Bitmap (squirrel)
-const image = new Image();
-image.addEventListener('load', () => {
-    const bitmapSkinId = renderer.createBitmapSkin(image);
-    if (wantedSkin === WantedSkinType.bitmap) {
+if (wantedSkin === WantedSkinType.bitmap) {
+    // Bitmap (squirrel)
+    const image = new Image();
+    image.addEventListener('load', () => {
+        const bitmapSkinId = renderer.createBitmapSkin(image);
         renderer.updateDrawableProperties(drawableID2, {
             skinId: bitmapSkinId
         });
-    }
-});
-image.crossOrigin = 'anonymous';
-image.src = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/7e24c99c1b853e52f8e7f9004416fa34.png/get/';
+    });
 
-// SVG (cat 1-a)
-const xhr = new XMLHttpRequest();
-xhr.addEventListener('load', function () {
-    const skinId = renderer.createSVGSkin(xhr.responseText);
-    if (wantedSkin === WantedSkinType.vector) {
+    image.crossOrigin = 'anonymous';
+    image.src = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/7e24c99c1b853e52f8e7f9004416fa34.png/get/';
+}
+
+
+if (wantedSkin === WantedSkinType.vector) {
+    // SVG (cat 1-a)
+    const xhr = new XMLHttpRequest();
+    xhr.addEventListener('load', function () {
+        const skinId = renderer.createSVGSkin(xhr.responseText);
         renderer.updateDrawableProperties(drawableID2, {
             skinId: skinId
         });
-    }
-});
-xhr.open('GET', 'https://cdn.assets.scratch.mit.edu/internalapi/asset/b7853f557e4426412e64bb3da6531a99.svg/get/');
-xhr.send();
+    });
+
+    xhr.open('GET', 'https://cdn.assets.scratch.mit.edu/internalapi/asset/b7853f557e4426412e64bb3da6531a99.svg/get/');
+    xhr.send();
+}
 
 if (wantedSkin === WantedSkinType.pen) {
     const penSkinID = renderer.createPenSkin();

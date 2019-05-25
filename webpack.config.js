@@ -7,7 +7,7 @@ const base = {
     devServer: {
         contentBase: false,
         host: '0.0.0.0',
-        port: process.env.PORT || 8361
+        port: process.env.PORT || 8362
     },
     devtool: 'cheap-module-source-map',
     module: {
@@ -60,8 +60,8 @@ module.exports = [
     Object.assign({}, base, {
         target: 'web',
         entry: {
-            'scratch-render': './src/index.js',
-            'scratch-render.min': './src/index.js'
+            'fabricat': './src/index.js',
+            'fabricat.min': './src/index.js'
         },
         output: {
             library: 'ScratchRender',
@@ -74,7 +74,7 @@ module.exports = [
     Object.assign({}, base, {
         target: 'node',
         entry: {
-            'scratch-render': './src/index.js'
+            fabricat: './src/index.js'
         },
         output: {
             library: 'ScratchRender',
@@ -86,7 +86,7 @@ module.exports = [
             '!ify-loader!grapheme-breaker': 'grapheme-breaker',
             '!ify-loader!linebreak': 'linebreak',
             'scratch-svg-renderer': true,
-            'twgl.js': true,
+            'gl-matrix': true,
             'xml-escape': true
         }
     })

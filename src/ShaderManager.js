@@ -1,75 +1,5 @@
-const twgl = require('twgl.js');
-
-
 class ShaderManager {
-    /**
-     * @param {WebGLRenderingContext} gl WebGL rendering context to create shaders for
-     * @constructor
-     */
-    constructor (gl) {
-        this._gl = gl;
-
-        /**
-         * The cache of all shaders compiled so far, filled on demand.
-         * @type {Object<ShaderManager.DRAW_MODE, Array<ProgramInfo>>}
-         * @private
-         */
-        this._shaderCache = {};
-        for (const modeName in ShaderManager.DRAW_MODE) {
-            if (ShaderManager.DRAW_MODE.hasOwnProperty(modeName)) {
-                this._shaderCache[modeName] = [];
-            }
-        }
-    }
-
-    /**
-     * Fetch the shader for a particular set of active effects.
-     * Build the shader if necessary.
-     * @param {ShaderManager.DRAW_MODE} drawMode Draw normally, silhouette, etc.
-     * @param {int} effectBits Bitmask representing the enabled effects.
-     * @returns {ProgramInfo} The shader's program info.
-     */
-    getShader (drawMode, effectBits) {
-        const cache = this._shaderCache[drawMode];
-        if (drawMode === ShaderManager.DRAW_MODE.silhouette) {
-            // Silhouette mode isn't affected by these effects.
-            effectBits &= ~(ShaderManager.EFFECT_INFO.color.mask | ShaderManager.EFFECT_INFO.brightness.mask);
-        }
-        let shader = cache[effectBits];
-        if (!shader) {
-            shader = cache[effectBits] = this._buildShader(drawMode, effectBits);
-        }
-        return shader;
-    }
-
-    /**
-     * Build the shader for a particular set of active effects.
-     * @param {ShaderManager.DRAW_MODE} drawMode Draw normally, silhouette, etc.
-     * @param {int} effectBits Bitmask representing the enabled effects.
-     * @returns {ProgramInfo} The new shader's program info.
-     * @private
-     */
-    _buildShader (drawMode, effectBits) {
-        const numEffects = ShaderManager.EFFECTS.length;
-
-        const defines = [
-            `#define DRAW_MODE_${drawMode}`
-        ];
-        for (let index = 0; index < numEffects; ++index) {
-            if ((effectBits & (1 << index)) !== 0) {
-                defines.push(`#define ENABLE_${ShaderManager.EFFECTS[index]}`);
-            }
-        }
-
-        const definesText = `${defines.join('\n')}\n`;
-
-        /* eslint-disable global-require */
-        const vsFullText = definesText + require('raw-loader!./shaders/sprite.vert');
-        const fsFullText = definesText + require('raw-loader!./shaders/sprite.frag');
-        /* eslint-enable global-require */
-
-        return twgl.createProgramInfo(this._gl, [vsFullText, fsFullText]);
-    }
+    
 }
 
 /**
@@ -146,37 +76,5 @@ ShaderManager.EFFECT_INFO = {
  * @type {Array}
  */
 ShaderManager.EFFECTS = Object.keys(ShaderManager.EFFECT_INFO);
-
-/**
- * The available draw modes.
- * @readonly
- * @enum {string}
- */
-ShaderManager.DRAW_MODE = {
-    /**
-     * Draw normally.
-     */
-    default: 'default',
-
-    /**
-     * Draw a silhouette using a solid color.
-     */
-    silhouette: 'silhouette',
-
-    /**
-     * Draw only the parts of the drawable which match a particular color.
-     */
-    colorMask: 'colorMask',
-
-    /**
-     * Sample a "texture" to draw a line with caps.
-     */
-    lineSample: 'lineSample',
-
-    /**
-     * Draw normally except for pre-multiplied alpha
-     */
-    stamp: 'stamp'
-};
 
 module.exports = ShaderManager;
