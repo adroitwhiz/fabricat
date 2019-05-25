@@ -78,7 +78,6 @@ class SVGSkin extends Skin {
 
             this._texture.onload = () => {
                 this._silhouette.update(this._texture);
-                window.tex = this._texture;
 
                 if (typeof rotationCenter === 'undefined') rotationCenter = this.calculateRotationCenter();
                 this.setRotationCenter.apply(this, rotationCenter);

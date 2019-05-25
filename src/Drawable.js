@@ -1,6 +1,5 @@
 const twgl = require('twgl.js');
 const matrix = require('gl-matrix');
-window.matrix = matrix;
 
 const Rectangle = require('./Rectangle');
 const RenderConstants = require('./RenderConstants');
