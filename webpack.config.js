@@ -1,13 +1,13 @@
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const path = require('path');
-const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
 
 const base = {
     mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
     devServer: {
         contentBase: false,
         host: '0.0.0.0',
-        port: process.env.PORT || 8361
+        port: process.env.PORT || 8362
     },
     devtool: 'cheap-module-source-map',
     module: {
@@ -26,7 +26,7 @@ const base = {
     },
     optimization: {
         minimizer: [
-            new UglifyJsPlugin({
+            new TerserPlugin({
                 include: /\.min\.js$/
             })
         ]
@@ -51,7 +51,7 @@ module.exports = [
             new CopyWebpackPlugin([
                 {
                     context: 'src/playground',
-                    from: '*.html'
+                    from: '*.+(html|css)'
                 }
             ])
         ])
@@ -60,8 +60,8 @@ module.exports = [
     Object.assign({}, base, {
         target: 'web',
         entry: {
-            'scratch-render': './src/index.js',
-            'scratch-render.min': './src/index.js'
+            'fabricat': './src/index.js',
+            'fabricat.min': './src/index.js'
         },
         output: {
             library: 'ScratchRender',
@@ -74,7 +74,7 @@ module.exports = [
     Object.assign({}, base, {
         target: 'node',
         entry: {
-            'scratch-render': './src/index.js'
+            fabricat: './src/index.js'
         },
         output: {
             library: 'ScratchRender',
@@ -85,9 +85,8 @@ module.exports = [
         externals: {
             '!ify-loader!grapheme-breaker': 'grapheme-breaker',
             '!ify-loader!linebreak': 'linebreak',
-            'hull.js': true,
             'scratch-svg-renderer': true,
-            'twgl.js': true,
+            'gl-matrix': true,
             'xml-escape': true
         }
     })

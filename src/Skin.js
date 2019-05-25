@@ -1,6 +1,6 @@
 const EventEmitter = require('events');
 
-const twgl = require('twgl.js');
+const matrix = require('gl-matrix');
 
 const RenderConstants = require('./RenderConstants');
 const Silhouette = require('./Silhouette');
@@ -30,28 +30,8 @@ class Skin extends EventEmitter {
         /** @type {int} */
         this._id = id;
 
-        /** @type {Vec3} */
-        this._rotationCenter = twgl.v3.create(0, 0);
-
-        /**
-         * The uniforms to be used by the vertex and pixel shaders.
-         * Some of these are used by other parts of the renderer as well.
-         * @type {Object.<string,*>}
-         * @private
-         */
-        this._uniforms = {
-            /**
-             * The nominal (not necessarily current) size of the current skin.
-             * @type {Array<number>}
-             */
-            u_skinSize: [0, 0],
-
-            /**
-             * The actual WebGL texture object for the skin.
-             * @type {WebGLTexture}
-             */
-            u_skin: null
-        };
+        /** @type {Vec2} */
+        this._rotationCenter = matrix.vec2.create();
 
         /**
          * A silhouette to store touching data, skins are responsible for keeping it up to date.
@@ -106,6 +86,13 @@ class Skin extends EventEmitter {
     }
 
     /**
+     * @return {Array<number>} the ratio of this skin's "native" size to its texture's size.
+     */
+    get sizeRatio () {
+        return [1, 1];
+    }
+
+    /**
      * Set the origin, in object space, about which this Skin should rotate.
      * @param {number} x - The x coordinate of the new rotation center.
      * @param {number} y - The y coordinate of the new rotation center.
@@ -153,17 +140,6 @@ class Skin extends EventEmitter {
     }
 
     /**
-     * Update and returns the uniforms for this skin.
-     * @param {Array<number>} scale - The scaling factors to be used.
-     * @returns {object.<string, *>} the shader uniforms to be used when rendering with this Skin.
-     */
-    getUniforms (scale) {
-        this._uniforms.u_skin = this.getTexture(scale);
-        this._uniforms.u_skinSize = this.size;
-        return this._uniforms;
-    }
-
-    /**
      * If the skin defers silhouette operations until the last possible minute,
      * this will be called before isTouching uses the silhouette.
      * @abstract
@@ -173,7 +149,7 @@ class Skin extends EventEmitter {
     /**
      * Does this point touch an opaque or translucent point on this skin?
      * Nearest Neighbor version
-     * @param {twgl.v3} vec A texture coordinate.
+     * @param {matrix.vec2} vec A texture coordinate.
      * @return {boolean} Did it touch?
      */
     isTouchingNearest (vec) {
@@ -183,7 +159,7 @@ class Skin extends EventEmitter {
     /**
      * Does this point touch an opaque or translucent point on this skin?
      * Linear Interpolation version
-     * @param {twgl.v3} vec A texture coordinate.
+     * @param {matrix.vec2} vec A texture coordinate.
      * @return {boolean} Did it touch?
      */
     isTouchingLinear (vec) {

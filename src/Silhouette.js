@@ -119,7 +119,7 @@ class Silhouette {
     /**
      * Sample a color from the silhouette at a given local position using
      * "nearest neighbor"
-     * @param {twgl.v3} vec [x,y] texture space (0-1)
+     * @param {matrix.vec2} vec [x,y] texture space (0-1)
      * @param {Uint8ClampedArray} dst The memory buffer to store the value in. (4 bytes)
      * @returns {Uint8ClampedArray} dst
      */
@@ -135,7 +135,7 @@ class Silhouette {
     /**
      * Sample a color from the silhouette at a given local position using
      * "linear interpolation"
-     * @param {twgl.v3} vec [x,y] texture space (0-1)
+     * @param {matrix.vec2} vec [x,y] texture space (0-1)
      * @param {Uint8ClampedArray} dst The memory buffer to store the value in. (4 bytes)
      * @returns {Uint8ClampedArray} dst
      */
@@ -166,7 +166,7 @@ class Silhouette {
 
     /**
      * Test if texture coordinate touches the silhouette using nearest neighbor.
-     * @param {twgl.v3} vec A texture coordinate.
+     * @param {matrix.vec2} vec A texture coordinate.
      * @return {boolean} If the nearest pixel has an alpha value.
      */
     isTouchingNearest (vec) {
@@ -181,7 +181,7 @@ class Silhouette {
     /**
      * Test to see if any of the 4 pixels used in the linear interpolate touch
      * the silhouette.
-     * @param {twgl.v3} vec A texture coordinate.
+     * @param {matrix.vec2} vec A texture coordinate.
      * @return {boolean} Any of the pixels have some alpha.
      */
     isTouchingLinear (vec) {

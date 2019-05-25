@@ -25,7 +25,7 @@ module.exports = {
         /**
          * NativeSizeChanged event
          *
-         * @event RenderWebGL#event:NativeSizeChanged
+         * @event RenderCanvas#event:NativeSizeChanged
          * @type {object}
          * @property {Array<int>} newSize - the new size of the renderer
          */

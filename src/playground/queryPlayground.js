@@ -1,4 +1,4 @@
-const ScratchRender = require('../RenderWebGL');
+const ScratchRender = require('../RenderCanvas');
 const getMousePosition = require('./getMousePosition');
 
 const renderCanvas = document.getElementById('renderCanvas');

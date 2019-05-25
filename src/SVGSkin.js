@@ -1,29 +1,25 @@
-const twgl = require('twgl.js');
-
 const Skin = require('./Skin');
 const SvgRenderer = require('scratch-svg-renderer').SVGRenderer;
-
-const MAX_TEXTURE_DIMENSION = 2048;
 
 class SVGSkin extends Skin {
     /**
      * Create a new SVG skin.
      * @param {!int} id - The ID for this Skin.
-     * @param {!RenderWebGL} renderer - The renderer which will use this skin.
+     * @param {!RenderCanvas} renderer - The renderer which will use this skin.
      * @constructor
      * @extends Skin
      */
     constructor (id, renderer) {
         super(id);
 
-        /** @type {RenderWebGL} */
+        /** @type {RenderCanvas} */
         this._renderer = renderer;
 
         /** @type {SvgRenderer} */
         this._svgRenderer = new SvgRenderer();
 
         /** @type {WebGLTexture} */
-        this._texture = null;
+        this._texture = document.createElement('img');
 
         /** @type {number} */
         this._textureScale = 1;
@@ -37,7 +33,6 @@ class SVGSkin extends Skin {
      */
     dispose () {
         if (this._texture) {
-            this._renderer.gl.deleteTexture(this._texture);
             this._texture = null;
         }
         super.dispose();
@@ -66,29 +61,6 @@ class SVGSkin extends Skin {
      */
     // eslint-disable-next-line no-unused-vars
     getTexture (scale) {
-        // The texture only ever gets uniform scale. Take the larger of the two axes.
-        const scaleMax = scale ? Math.max(Math.abs(scale[0]), Math.abs(scale[1])) : 100;
-        const requestedScale = Math.min(scaleMax / 100, this._maxTextureScale);
-        let newScale = this._textureScale;
-        while ((newScale < this._maxTextureScale) && (requestedScale >= 1.5 * newScale)) {
-            newScale *= 2;
-        }
-        if (this._textureScale !== newScale) {
-            this._textureScale = newScale;
-            this._svgRenderer._draw(this._textureScale, () => {
-                if (this._textureScale === newScale) {
-                    const canvas = this._svgRenderer.canvas;
-                    const context = canvas.getContext('2d');
-                    const textureData = context.getImageData(0, 0, canvas.width, canvas.height);
-
-                    const gl = this._renderer.gl;
-                    gl.bindTexture(gl.TEXTURE_2D, this._texture);
-                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureData);
-                    this._silhouette.update(textureData);
-                }
-            });
-        }
-
         return this._texture;
     }
 
@@ -101,41 +73,16 @@ class SVGSkin extends Skin {
      */
     setSVG (svgData, rotationCenter) {
         this._svgRenderer.fromString(svgData, 1, () => {
-            const gl = this._renderer.gl;
-            this._textureScale = this._maxTextureScale = 1;
+            this._texture.src = `data:image/svg+xml;utf8,${encodeURIComponent(this._svgRenderer.toString())}`;
 
-            // Pull out the ImageData from the canvas. ImageData speeds up
-            // updating Silhouette and is better handled by more browsers in
-            // regards to memory.
-            const canvas = this._svgRenderer.canvas;
-            const context = canvas.getContext('2d');
-            const textureData = context.getImageData(0, 0, canvas.width, canvas.height);
+            this._texture.onload = () => {
+                this._silhouette.update(this._texture);
 
-            if (this._texture) {
-                gl.bindTexture(gl.TEXTURE_2D, this._texture);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureData);
-                this._silhouette.update(textureData);
-            } else {
-                // TODO: mipmaps?
-                const textureOptions = {
-                    auto: true,
-                    wrap: gl.CLAMP_TO_EDGE,
-                    src: textureData
-                };
-
-                this._texture = twgl.createTexture(gl, textureOptions);
-                this._silhouette.update(textureData);
-            }
-
-            const maxDimension = Math.max(this._svgRenderer.canvas.width, this._svgRenderer.canvas.height);
-            let testScale = 2;
-            for (testScale; maxDimension * testScale <= MAX_TEXTURE_DIMENSION; testScale *= 2) {
-                this._maxTextureScale = testScale;
-            }
-
-            if (typeof rotationCenter === 'undefined') rotationCenter = this.calculateRotationCenter();
-            this.setRotationCenter.apply(this, rotationCenter);
-            this.emit(Skin.Events.WasAltered);
+                if (typeof rotationCenter === 'undefined') rotationCenter = this.calculateRotationCenter();
+                this.setRotationCenter.apply(this, rotationCenter);
+                this.emit(Skin.Events.WasAltered);
+            };
+            
         });
     }
 

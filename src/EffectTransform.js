@@ -4,7 +4,7 @@
  * representing how the shaders apply effects.
  */
 
-const twgl = require('twgl.js');
+const matrix = require('gl-matrix');
 
 const ShaderManager = require('./ShaderManager');
 
@@ -182,12 +182,12 @@ class EffectTransform {
     /**
      * Transform a texture coordinate to one that would be select after applying shader effects.
      * @param {Drawable} drawable The drawable whose effects to emulate.
-     * @param {twgl.v3} vec The texture coordinate to transform.
-     * @param {?twgl.v3} dst A place to store the output coordinate.
-     * @return {twgl.v3} dst - The coordinate after being transform by effects.
+     * @param {matrix.vec2} vec The texture coordinate to transform.
+     * @param {?matrix.vec2} dst A place to store the output coordinate.
+     * @return {matrix.vec2} dst - The coordinate after being transform by effects.
      */
-    static transformPoint (drawable, vec, dst = twgl.v3.create()) {
-        twgl.v3.copy(vec, dst);
+    static transformPoint (drawable, vec, dst = matrix.vec2.create()) {
+        matrix.vec2.copy(dst, vec);
 
         const uniforms = drawable.getUniforms();
         const effects = drawable.getEnabledEffects();

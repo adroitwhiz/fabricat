@@ -1,5 +1,3 @@
-const twgl = require('twgl.js');
-
 const Skin = require('./Skin');
 
 class BitmapSkin extends Skin {
@@ -7,7 +5,7 @@ class BitmapSkin extends Skin {
      * Create a new Bitmap Skin.
      * @extends Skin
      * @param {!int} id - The ID for this Skin.
-     * @param {!RenderWebGL} renderer - The renderer which will use this skin.
+     * @param {!RenderCanvas} renderer - The renderer which will use this skin.
      */
     constructor (id, renderer) {
         super(id);
@@ -15,7 +13,7 @@ class BitmapSkin extends Skin {
         /** @type {!int} */
         this._costumeResolution = 1;
 
-        /** @type {!RenderWebGL} */
+        /** @type {!RenderCanvas} */
         this._renderer = renderer;
 
         /** @type {WebGLTexture} */
@@ -30,7 +28,6 @@ class BitmapSkin extends Skin {
      */
     dispose () {
         if (this._texture) {
-            this._renderer.gl.deleteTexture(this._texture);
             this._texture = null;
         }
         super.dispose();
@@ -48,6 +45,13 @@ class BitmapSkin extends Skin {
      */
     get size () {
         return [this._textureSize[0] / this._costumeResolution, this._textureSize[1] / this._costumeResolution];
+    }
+
+    /**
+     * @return {Array<number>} the ratio of this skin's "native" size to its texture's size.
+     */
+    get sizeRatio () {
+        return [0.5, 0.5];
     }
 
     /**
@@ -77,34 +81,9 @@ class BitmapSkin extends Skin {
      * @fires Skin.event:WasAltered
      */
     setBitmap (bitmapData, costumeResolution, rotationCenter) {
-        const gl = this._renderer.gl;
+        this._texture = bitmapData;
 
-        // Preferably bitmapData is ImageData. ImageData speeds up updating
-        // Silhouette and is better handled by more browsers in regards to
-        // memory.
-        let textureData = bitmapData;
-        if (bitmapData instanceof HTMLCanvasElement) {
-            // Given a HTMLCanvasElement get the image data to pass to webgl and
-            // Silhouette.
-            const context = bitmapData.getContext('2d');
-            textureData = context.getImageData(0, 0, bitmapData.width, bitmapData.height);
-        }
-
-        if (this._texture) {
-            gl.bindTexture(gl.TEXTURE_2D, this._texture);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureData);
-            this._silhouette.update(textureData);
-        } else {
-            // TODO: mipmaps?
-            const textureOptions = {
-                auto: true,
-                wrap: gl.CLAMP_TO_EDGE,
-                src: textureData
-            };
-
-            this._texture = twgl.createTexture(gl, textureOptions);
-            this._silhouette.update(textureData);
-        }
+        this._silhouette.update(bitmapData);
 
         // Do these last in case any of the above throws an exception
         this._costumeResolution = costumeResolution || 2;

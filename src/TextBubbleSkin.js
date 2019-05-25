@@ -1,5 +1,3 @@
-const twgl = require('twgl.js');
-
 const TextWrapper = require('./util/text-wrapper');
 const CanvasMeasurementProvider = require('./util/canvas-measurement-provider');
 const Skin = require('./Skin');
@@ -29,21 +27,18 @@ class TextBubbleSkin extends Skin {
     /**
      * Create a new text bubble skin.
      * @param {!int} id - The ID for this Skin.
-     * @param {!RenderWebGL} renderer - The renderer which will use this skin.
+     * @param {!RenderCanvas} renderer - The renderer which will use this skin.
      * @constructor
      * @extends Skin
      */
     constructor (id, renderer) {
         super(id);
 
-        /** @type {RenderWebGL} */
+        /** @type {RenderCanvas} */
         this._renderer = renderer;
 
         /** @type {HTMLCanvasElement} */
         this._canvas = document.createElement('canvas');
-
-        /** @type {WebGLTexture} */
-        this._texture = null;
 
         /** @type {Array<number>} */
         this._size = [0, 0];
@@ -80,7 +75,6 @@ class TextBubbleSkin extends Skin {
      */
     dispose () {
         if (this._texture) {
-            this._renderer.gl.deleteTexture(this._texture);
             this._texture = null;
         }
         this._canvas = null;
@@ -260,27 +254,10 @@ class TextBubbleSkin extends Skin {
             this._renderTextBubble(requestedScale);
             this._textureDirty = false;
 
-            const context = this._canvas.getContext('2d');
-            const textureData = context.getImageData(0, 0, this._canvas.width, this._canvas.height);
-
-            const gl = this._renderer.gl;
-
-            if (this._texture === null) {
-                const textureOptions = {
-                    auto: true,
-                    wrap: gl.CLAMP_TO_EDGE,
-                    src: textureData
-                };
-
-                this._texture = twgl.createTexture(gl, textureOptions);
-            }
-    
-            gl.bindTexture(gl.TEXTURE_2D, this._texture);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureData);
-            this._silhouette.update(textureData);
+            this._silhouette.update(this._canvas);
         }
 
-        return this._texture;
+        return this._canvas;
     }
 }
 
