@@ -75,7 +75,6 @@ class TextBubbleSkin extends Skin {
      */
     dispose () {
         if (this._texture) {
-            this._renderer.gl.deleteTexture(this._texture);
             this._texture = null;
         }
         this._canvas = null;

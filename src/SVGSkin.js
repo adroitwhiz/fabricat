@@ -33,7 +33,6 @@ class SVGSkin extends Skin {
      */
     dispose () {
         if (this._texture) {
-            this._renderer.gl.deleteTexture(this._texture);
             this._texture = null;
         }
         super.dispose();
