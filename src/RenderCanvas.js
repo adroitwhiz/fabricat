@@ -1330,6 +1330,8 @@ class RenderCanvas extends EventEmitter {
             if (tex) {
                 ctx.drawImage(tex, 0, 0);
             }
+
+            ctx.globalAlpha = 1;
         }
 
         ctx.restore();
