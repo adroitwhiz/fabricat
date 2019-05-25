@@ -1,6 +1,5 @@
 ## Possible future improvements
  - Effects:
-	- Ghost
 	- Color + brightness (possibly)
 	- Mosaic (with some complex trickery)
 	- Pixelate (with more trickery)

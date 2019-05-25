@@ -7,6 +7,7 @@ const Drawable = require('./Drawable');
 const Rectangle = require('./Rectangle');
 const PenSkin = require('./PenSkin');
 const RenderConstants = require('./RenderConstants');
+const ShaderManager = require('./ShaderManager');
 const SVGSkin = require('./SVGSkin');
 const TextBubbleSkin = require('./TextBubbleSkin');
 const log = require('./util/log');
@@ -1287,6 +1288,8 @@ class RenderCanvas extends EventEmitter {
             ctx = this.ctx;
         }
 
+        ctx.save();
+
         const mat = matrix.mat2d.create();
         
         for (let drawableIndex = 0; drawableIndex < drawables.length; ++drawableIndex) {
@@ -1314,6 +1317,11 @@ class RenderCanvas extends EventEmitter {
             let effectBits = drawable.getEnabledEffects();
             effectBits &= opts.hasOwnProperty('effectMask') ? opts.effectMask : effectBits;
 
+            // Ghost effect
+            if ((effectBits & ShaderManager.EFFECT_INFO.ghost.mask) !== 0) {
+                ctx.globalAlpha = drawable._effects[ShaderManager.EFFECT_INFO.ghost.uniformName];
+            }
+
             matrix.mat2d.multiply(mat, projection, drawable.getTransform());
             ctx.setTransform(mat[0], mat[1], mat[2], mat[3], mat[4], mat[5]);
             ctx.imageSmoothingEnabled = false;
@@ -1324,8 +1332,7 @@ class RenderCanvas extends EventEmitter {
             }
         }
 
-        // Reset the canvas transform.
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.restore();
     }
 
     /**
