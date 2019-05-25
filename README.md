@@ -1,13 +1,7 @@
-## scratch-render
-#### WebGL-based rendering engine for Scratch 3.0
+## fabricat
+#### Canvas-based version of the Scratch 3.0 renderer
 
-[![Build Status](https://travis-ci.org/LLK/scratch-render.svg?branch=develop)](https://travis-ci.org/LLK/scratch-render)
-[![Greenkeeper badge](https://badges.greenkeeper.io/LLK/scratch-render.svg)](https://greenkeeper.io/)
-
-## Installation
-```bash
-npm install https://github.com/LLK/scratch-render.git
-```
+[![Build Status](https://travis-ci.org/adroitwhiz/fabricat.svg?branch=develop)](https://travis-ci.org/adroitwhiz/fabricat)
 
 ## Setup
 ```html
@@ -15,7 +9,7 @@ npm install https://github.com/LLK/scratch-render.git
 <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>Scratch WebGL rendering demo</title>
+        <title>Fabricat canvas rendering demo</title>
     </head>
 
     <body>
@@ -65,5 +59,5 @@ npm run build
 npm test
 ```
 
-## Donate
-We provide [Scratch](https://scratch.mit.edu) free of charge, and want to keep it that way! Please consider making a [donation](https://secure.donationpay.org/scratchfoundation/) to support our continued engineering, design, community, and resource development efforts. Donations of any size are appreciated. Thank you!
+## Credit
+Most of this codebase was written by the Scratch Team for [scratch-render](https://github.com/llk/scratch-render), the official WebGL-based renderer for [Scratch](https://scratch.mit.edu). I simply modified it to work via the 2D canvas drawing API.
