@@ -16,8 +16,9 @@ class BitmapSkin extends Skin {
         /** @type {!RenderCanvas} */
         this._renderer = renderer;
 
-        /** @type {WebGLTexture} */
-        this._texture = null;
+        /** @type {HTMLCanvasElement} */
+        this._texture = document.createElement('canvas');
+        this._ctx = this._texture.getContext('2d');
 
         /** @type {Array<int>} */
         this._textureSize = [0, 0];
@@ -81,7 +82,14 @@ class BitmapSkin extends Skin {
      * @fires Skin.event:WasAltered
      */
     setBitmap (bitmapData, costumeResolution, rotationCenter) {
-        this._texture = bitmapData;
+        // We can't just set our texture to bitmapData, because it may be changed/reused for loading other costumes.
+        // Instead, we draw it to our own internal canvas.
+        const texSize = BitmapSkin._getBitmapSize(bitmapData);
+        this._texture.width = texSize[0];
+        this._texture.height = texSize[1];
+
+        this._ctx.clearRect(0, 0, texSize[0], texSize[1]);
+        this._ctx.drawImage(bitmapData, 0, 0);
 
         this._silhouette.update(bitmapData);
 
