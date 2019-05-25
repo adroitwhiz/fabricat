@@ -155,7 +155,6 @@ class PenSkin extends Skin {
     _setCanvasSize (canvasSize) {
         const [width, height] = canvasSize;
 
-        const gl = this._renderer.gl;
         this._canvas.width = width;
         this._canvas.height = height;
         this._rotationCenter[0] = width / 2;
