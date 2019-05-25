@@ -15,7 +15,7 @@ const log = require('./util/log');
 const __isTouchingDrawablesPoint = matrix.vec2.create();
 const __candidatesBounds = new Rectangle();
 const __touchingColor = new Uint8ClampedArray(4);
-const __blendColor = new Uint8ClampedArray(4)
+const __blendColor = new Uint8ClampedArray(4);
 
 /**
  * @callback RenderCanvas#idFilterFunc
@@ -1265,7 +1265,7 @@ class RenderCanvas extends EventEmitter {
      * @param {object} event - The change event.
      * @private
      */
-    onNativeSizeChanged (event) {
+    onNativeSizeChanged () {
         
     }
 
