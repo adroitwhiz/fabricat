@@ -154,12 +154,6 @@ class RenderCanvas extends EventEmitter {
         this._tempCanvas = document.createElement('canvas');
         this._tempCanvasCtx = this._tempCanvas.getContext('2d');
 
-        /** @type {any} */
-        this._regionId = null;
-
-        /** @type {function} */
-        this._exitRegion = null;
-
         /** @type {Array.<snapshotCallback>} */
         this._snapshotCallbacks = [];
 
@@ -180,14 +174,7 @@ class RenderCanvas extends EventEmitter {
     }
 
     /**
-     * @returns {WebGLRenderingContext} the WebGL rendering context associated with this renderer.
-     */
-    get gl () {
-        return this._gl;
-    }
-
-    /**
-     * @returns {HTMLCanvasElement} the canvas of the WebGL rendering context associated with this renderer.
+     * @returns {HTMLCanvasElement} the canvas of the 2D rendering context associated with this renderer.
      */
     get canvas () {
         return this.ctx.canvas;
@@ -1314,7 +1301,7 @@ class RenderCanvas extends EventEmitter {
         ctx.imageSmoothingEnabled = false;
 
         const mat = matrix.mat2d.create();
-        
+
         for (let drawableIndex = 0; drawableIndex < drawables.length; ++drawableIndex) {
             const drawableID = drawables[drawableIndex];
 

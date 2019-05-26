@@ -60,7 +60,7 @@ class BitmapSkin extends Skin {
 
     /**
      * @param {Array<number>} scale - The scaling factors to be used.
-     * @return {WebGLTexture} The GL texture representation of this skin when drawing at the given scale.
+     * @return {HTMLCanvasElement} The texture of this skin when drawing at the given scale.
      */
     // eslint-disable-next-line no-unused-vars
     getTexture (scale) {

@@ -249,7 +249,7 @@ class TextBubbleSkin extends Skin {
 
     /**
      * @param {Array<number>} scale - The scaling factors to be used, each in the [0,100] range.
-     * @return {WebGLTexture} The GL texture representation of this skin when drawing at the given scale.
+     * @return {HTMLCanvasElement} The texture representation of this skin when drawing at the given scale.
      */
     getTexture (scale) {
         // The texture only ever gets uniform scale. Take the larger of the two axes.

@@ -123,7 +123,7 @@ class Skin extends EventEmitter {
     /**
      * @abstract
      * @param {Array<number>} scale - The scaling factors to be used.
-     * @return {WebGLTexture} The GL texture representation of this skin when drawing at the given size.
+     * @return {HTMLCanvasElement} The texture of this skin when drawing at the given size.
      */
     // eslint-disable-next-line no-unused-vars
     getTexture (scale) {

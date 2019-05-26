@@ -18,7 +18,7 @@ class SVGSkin extends Skin {
         /** @type {SvgRenderer} */
         this._svgRenderer = new SvgRenderer();
 
-        /** @type {WebGLTexture} */
+        /** @type {HTMLImageElement} */
         this._texture = document.createElement('img');
 
         /** @type {number} */
@@ -57,7 +57,7 @@ class SVGSkin extends Skin {
 
     /**
      * @param {Array<number>} scale - The scaling factors to be used, each in the [0,100] range.
-     * @return {WebGLTexture} The GL texture representation of this skin when drawing at the given scale.
+     * @return {HTMLImageElement} The texture representation of this skin when drawing at the given scale.
      */
     // eslint-disable-next-line no-unused-vars
     getTexture (scale) {

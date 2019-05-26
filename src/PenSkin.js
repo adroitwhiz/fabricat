@@ -25,16 +25,16 @@ class PenSkin extends Skin {
     /**
      * Create a Skin which implements a Scratch pen layer.
      * @param {int} id - The unique ID for this Skin.
-     * @param {RenderWebGL} renderer - The renderer which will use this Skin.
+     * @param {RenderCanvas} renderer - The renderer which will use this Skin.
      * @extends Skin
-     * @listens RenderWebGL#event:NativeSizeChanged
+     * @listens RenderCanvas#event:NativeSizeChanged
      */
     constructor (id, renderer) {
         super(id);
 
         /**
          * @private
-         * @type {RenderWebGL}
+         * @type {RenderCanvas}
          */
         this._renderer = renderer;
 
