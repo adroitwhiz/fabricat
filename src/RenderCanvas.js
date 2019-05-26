@@ -152,6 +152,7 @@ class RenderCanvas extends EventEmitter {
 
         /** @type {HTMLCanvasElement} */
         this._tempCanvas = document.createElement('canvas');
+        this._tempCanvasCtx = this._tempCanvas.getContext('2d');
 
         /** @type {any} */
         this._regionId = null;
@@ -199,9 +200,18 @@ class RenderCanvas extends EventEmitter {
      * @param {int} pixelsTall The desired height in device-independent pixels.
      */
     resize (pixelsWide, pixelsTall) {
+        const canvas = this.ctx.canvas;
         const pixelRatio = window.devicePixelRatio || 1;
-        this.ctx.canvas.width = pixelsWide * pixelRatio;
-        this.ctx.canvas.height = pixelsTall * pixelRatio;
+
+        const newWidth = pixelsWide * pixelRatio;
+        const newHeight = pixelsTall * pixelRatio;
+
+        // The color picker triggers "componentDidUpdate" on the stage, which resizes the canvas.
+        // Resizing will erase the canvas' contents, causing flickering, so check if we *really* need to resize.
+        if (canvas.width !== newWidth || canvas.height !== newHeight) {
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+        }
 
         this._scaleMatrix[0] = (pixelsWide * pixelRatio) / this._nativeSize[0];
         this._scaleMatrix[3] = (pixelsTall * pixelRatio) / this._nativeSize[1];
@@ -584,12 +594,13 @@ class RenderCanvas extends EventEmitter {
      */
     draw () {
         const ctx = this.ctx;
+
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
         matrix.mat2d.multiply(this._drawProjection, this._scaleMatrix, this._projection);
 
-        this._drawThese(this._drawList, this._drawProjection);
+        this._drawThese(this._drawList, this._drawProjection, {dstCanvas: this.canvas});
 
         if (this._snapshotCallbacks.length > 0) {
             const snapshot = this.canvas.toDataURL();
@@ -962,7 +973,7 @@ class RenderCanvas extends EventEmitter {
         const pickY = scratchY + bounds.top;
 
         const dstCanvas = this._tempCanvas;
-        const dstCtx = dstCanvas.getContext('2d');
+        const dstCtx = this._tempCanvasCtx;
 
         dstCanvas.width = bounds.width;
         dstCanvas.height = bounds.height;
@@ -1296,10 +1307,12 @@ class RenderCanvas extends EventEmitter {
         if (opts.dstCanvas) {
             ctx = opts.dstCanvas.getContext('2d');
         } else {
-            ctx = this.ctx;
+            //ctx = this.ctx;
+            console.warn('No canvas specified');
         }
 
         ctx.save();
+        ctx.imageSmoothingEnabled = false;
 
         const mat = matrix.mat2d.create();
         
@@ -1328,21 +1341,38 @@ class RenderCanvas extends EventEmitter {
             let effectBits = drawable.getEnabledEffects();
             effectBits &= opts.hasOwnProperty('effectMask') ? opts.effectMask : effectBits;
 
+            let tex = drawable.skin.getTexture(drawableScale);
+
+            ctx.save();
+
             // Ghost effect
             if ((effectBits & ShaderManager.EFFECT_INFO.ghost.mask) !== 0) {
                 ctx.globalAlpha = drawable._effects[ShaderManager.EFFECT_INFO.ghost.uniformName];
             }
 
+            // Color effect
+            if ((effectBits & ShaderManager.EFFECT_INFO.color.mask) !== 0) {
+                const tmpCtx = this._tempCanvasCtx;
+                tmpCtx.width = drawableScale[0];
+                tmpCtx.height = drawableScale[1];
+                tmpCtx.filter = drawable._effects[ShaderManager.EFFECT_INFO.color.uniformName];
+                tmpCtx.clearRect(0, 0, drawableScale[0], drawableScale[1]);
+                tmpCtx.drawImage(tex, 0, 0);
+                tex = this._tempCanvas;
+
+                if (drawable.skin instanceof SVGSkin) {
+                    ctx.imageSmoothingEnabled = true;
+                }
+            }
+
             matrix.mat2d.multiply(mat, projection, drawable.getTransform());
             ctx.setTransform(mat[0], mat[1], mat[2], mat[3], mat[4], mat[5]);
-            ctx.imageSmoothingEnabled = false;
-            const tex = drawable.skin.getTexture(drawableScale);
 
             if (tex) {
                 ctx.drawImage(tex, 0, 0);
             }
 
-            ctx.globalAlpha = 1;
+            ctx.restore();
         }
 
         ctx.restore();

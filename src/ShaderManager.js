@@ -20,7 +20,8 @@ ShaderManager.EFFECT_INFO = {
     color: {
         uniformName: 'u_color',
         mask: 1 << 0,
-        converter: x => (x / 200) % 1,
+        // converter: x => (x / 200) % 1,
+        converter: x => `hue-rotate(${(x * 1.8) % 360}deg)`,
         shapeChanges: false
     },
     /** Fisheye effect */
