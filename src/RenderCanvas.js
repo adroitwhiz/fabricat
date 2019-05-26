@@ -1325,7 +1325,7 @@ class RenderCanvas extends EventEmitter {
             matrix.mat2d.multiply(mat, projection, drawable.getTransform());
             ctx.setTransform(mat[0], mat[1], mat[2], mat[3], mat[4], mat[5]);
             ctx.imageSmoothingEnabled = false;
-            const tex = drawable.skin.getTexture();
+            const tex = drawable.skin.getTexture(drawableScale);
 
             if (tex) {
                 ctx.drawImage(tex, 0, 0);

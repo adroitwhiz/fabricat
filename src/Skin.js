@@ -89,7 +89,7 @@ class Skin extends EventEmitter {
      * @return {Array<number>} the ratio of this skin's "native" size to its texture's size.
      */
     get sizeRatio () {
-        return [1, 1];
+        return 1;
     }
 
     /**

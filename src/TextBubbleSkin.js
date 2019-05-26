@@ -92,6 +92,13 @@ class TextBubbleSkin extends Skin {
     }
 
     /**
+     * @return {Array<number>} the ratio of this skin's "native" size to its texture's size.
+     */
+    get sizeRatio () {
+        return 1 / this._renderedScale;
+    }
+
+    /**
      * Set parameters for this text bubble.
      * @param {!string} type - either "say" or "think".
      * @param {!string} text - the text for the bubble.
@@ -251,8 +258,10 @@ class TextBubbleSkin extends Skin {
 
         // If we already rendered the text bubble at this scale, we can skip re-rendering it.
         if (this._textureDirty || this._renderedScale !== requestedScale) {
+            
             this._renderTextBubble(requestedScale);
             this._textureDirty = false;
+            this.emit(Skin.Events.WasAltered);
 
             this._silhouette.update(this._canvas);
         }
