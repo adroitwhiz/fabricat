@@ -73,7 +73,7 @@ class SVGSkin extends Skin {
      */
     setSVG (svgData, rotationCenter) {
         this._svgRenderer.fromString(svgData, 1, () => {
-            this._texture.src = `data:image/svg+xml;utf8,${encodeURIComponent(this._svgRenderer.toString())}`;
+            this._texture.src = `data:image/svg+xml;utf8,${encodeURIComponent(this._svgRenderer.toString(true))}`;
 
             this._texture.onload = () => {
                 this._silhouette.update(this._texture);
