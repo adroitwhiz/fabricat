@@ -1343,27 +1343,30 @@ class RenderCanvas extends EventEmitter {
 
             let tex = drawable.skin.getTexture(drawableScale);
 
-            ctx.save();
+            if (effectBits !== 0) {
+                ctx.save();
 
-            // Ghost effect
-            if ((effectBits & ShaderManager.EFFECT_INFO.ghost.mask) !== 0) {
-                ctx.globalAlpha = drawable._effects[ShaderManager.EFFECT_INFO.ghost.uniformName];
-            }
-
-            // Color effect
-            if ((effectBits & ShaderManager.EFFECT_INFO.color.mask) !== 0) {
-                const tmpCtx = this._tempCanvasCtx;
-                tmpCtx.width = drawableScale[0];
-                tmpCtx.height = drawableScale[1];
-                tmpCtx.filter = drawable._effects[ShaderManager.EFFECT_INFO.color.uniformName];
-                tmpCtx.clearRect(0, 0, drawableScale[0], drawableScale[1]);
-                tmpCtx.drawImage(tex, 0, 0);
-                tex = this._tempCanvas;
-
-                if (drawable.skin instanceof SVGSkin) {
-                    ctx.imageSmoothingEnabled = true;
+                // Ghost effect
+                if ((effectBits & ShaderManager.EFFECT_INFO.ghost.mask) !== 0) {
+                    ctx.globalAlpha = drawable._effects[ShaderManager.EFFECT_INFO.ghost.uniformName];
+                }
+    
+                // Color effect
+                if ((effectBits & ShaderManager.EFFECT_INFO.color.mask) !== 0) {
+                    const tmpCtx = this._tempCanvasCtx;
+                    tmpCtx.width = drawableScale[0];
+                    tmpCtx.height = drawableScale[1];
+                    tmpCtx.filter = drawable._effects[ShaderManager.EFFECT_INFO.color.uniformName];
+                    tmpCtx.clearRect(0, 0, drawableScale[0], drawableScale[1]);
+                    tmpCtx.drawImage(tex, 0, 0);
+                    tex = this._tempCanvas;
+    
+                    if (drawable.skin instanceof SVGSkin) {
+                        ctx.imageSmoothingEnabled = true;
+                    }
                 }
             }
+            
 
             matrix.mat2d.multiply(mat, projection, drawable.getTransform());
             ctx.setTransform(mat[0], mat[1], mat[2], mat[3], mat[4], mat[5]);
@@ -1372,7 +1375,9 @@ class RenderCanvas extends EventEmitter {
                 ctx.drawImage(tex, 0, 0);
             }
 
-            ctx.restore();
+            if (effectBits !== 0) {
+                ctx.restore();
+            }
         }
 
         ctx.restore();
