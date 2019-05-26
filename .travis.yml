@@ -3,7 +3,6 @@ dist: trusty
 addons:
   chrome: stable
 node_js:
-- 8
 - node
 env:
   - NODE_ENV=production
@@ -24,19 +23,17 @@ jobs:
       - npm run docs
       - npm run tap
     - stage: deploy
-      node_js: 8
+      node_js: node
       script: npm run build
       before_deploy:
       - VPKG=$($(npm bin)/json -f package.json version)
-      - export VERSION=${VPKG}.$(date date +%Y-%m-%dT%H:%MZ --utc)
+      - export VERSION=${VPKG}-prerelease.$(date date +%Y-%m-%dT%H:%MZ --utc)
       - npm --no-git-tag-version version $VERSION
       - git config --global user.email "$(git log --pretty=format:'%ae' -n1)"
       - git config --global user.name "$(git log --pretty=format:'%an' -n1)"
       deploy:
         provider: npm
         skip_cleanup: true
-        "on":
-          all_branches: true
-          condition: $RELEASE_BRANCHES =~ $TRAVIS_BRANCH
+        if: branch = release
         email: $NPM_EMAIL
         api_key: $NPM_TOKEN
