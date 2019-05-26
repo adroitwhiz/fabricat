@@ -6,7 +6,7 @@
 
 const matrix = require('gl-matrix');
 
-const ShaderManager = require('./ShaderManager');
+const EffectManager = require('./EffectManager');
 
 /**
  * A texture coordinate is between 0 and 1. 0.5 is the center position.
@@ -114,9 +114,9 @@ const hslToRgb = ([h, s, l]) => {
 class EffectTransform {
 
     /**
-     * Transform a color given the drawables effect uniforms.  Will apply
+     * Transform a color given the drawable's effects.  Will apply
      * Ghost and Color and Brightness effects.
-     * @param {Drawable} drawable The drawable to get uniforms from.
+     * @param {Drawable} drawable The drawable to get effects from.
      * @param {Uint8ClampedArray} color4b The initial color.
      * @param {Uint8ClampedArary} [dst] Working space to save the color in (is returned)
      * @param {number} [effectMask] A bitmask for which effects to use. Optional.
@@ -130,16 +130,15 @@ class EffectTransform {
             return dst;
         }
 
-        const uniforms = drawable.getUniforms();
-        const effects = drawable.getEnabledEffects() & effectMask;
+        const effectBits = drawable.getEnabledEffects() & effectMask;
 
-        if ((effects & ShaderManager.EFFECT_INFO.ghost.mask) !== 0) {
+        if ((effectBits & EffectManager.EFFECT_INFO.ghost.mask) !== 0) {
             // gl_FragColor.a *= u_ghost
-            dst[3] *= uniforms.u_ghost;
+            dst[3] *= drawable._effects.ghost;
         }
 
-        const enableColor = (effects & ShaderManager.EFFECT_INFO.color.mask) !== 0;
-        const enableBrightness = (effects & ShaderManager.EFFECT_INFO.brightness.mask) !== 0;
+        const enableColor = (effectBits & EffectManager.EFFECT_INFO.color.mask) !== 0;
+        const enableBrightness = /* (effectBits & EffectManager.EFFECT_INFO.brightness.mask) !== 0*/ false;
 
         if (enableColor || enableBrightness) {
             // vec3 hsl = convertRGB2HSL(gl_FragColor.xyz);
@@ -165,12 +164,12 @@ class EffectTransform {
 
                 // hsl.x = mod(hsl.x + u_color, 1.0);
                 // if (hsl.x < 0.0) hsl.x += 1.0;
-                hsl[0] = (uniforms.u_color + hsl[0] + 1) % 1;
+                hsl[0] = (drawable._effects.color + hsl[0] + 1) % 1;
             }
 
             if (enableBrightness) {
                 // hsl.z = clamp(hsl.z + u_brightness, 0.0, 1.0);
-                hsl[2] = Math.min(1, hsl[2] + uniforms.u_brightness);
+                hsl[2] = Math.min(1, hsl[2] + drawable._effects.u_brightness);
             }
             // gl_FragColor.rgb = convertHSL2RGB(hsl);
             dst.set(hslToRgb(hsl));
@@ -192,12 +191,12 @@ class EffectTransform {
         const uniforms = drawable.getUniforms();
         const effects = drawable.getEnabledEffects();
 
-        if ((effects & ShaderManager.EFFECT_INFO.mosaic.mask) !== 0) {
+        if ((effects & EffectManager.EFFECT_INFO.mosaic.mask) !== 0) {
             // texcoord0 = fract(u_mosaic * texcoord0);
             dst[0] = uniforms.u_mosaic * dst[0] % 1;
             dst[1] = uniforms.u_mosaic * dst[1] % 1;
         }
-        if ((effects & ShaderManager.EFFECT_INFO.pixelate.mask) !== 0) {
+        if ((effects & EffectManager.EFFECT_INFO.pixelate.mask) !== 0) {
             const skinUniforms = drawable.skin.getUniforms();
             // vec2 pixelTexelSize = u_skinSize / u_pixelate;
             const texelX = skinUniforms.u_skinSize[0] * uniforms.u_pixelate;
@@ -207,7 +206,7 @@ class EffectTransform {
             dst[0] = (Math.floor(dst[0] * texelX) + CENTER_X) / texelX;
             dst[1] = (Math.floor(dst[1] * texelY) + CENTER_Y) / texelY;
         }
-        if ((effects & ShaderManager.EFFECT_INFO.whirl.mask) !== 0) {
+        if ((effects & EffectManager.EFFECT_INFO.whirl.mask) !== 0) {
             // const float kRadius = 0.5;
             const RADIUS = 0.5;
             // vec2 offset = texcoord0 - kCenter;
@@ -236,7 +235,7 @@ class EffectTransform {
             dst[0] = (rot1 * offsetX) + (rot3 * offsetY) + CENTER_X;
             dst[1] = (rot2 * offsetX) + (rot4 * offsetY) + CENTER_Y;
         }
-        if ((effects & ShaderManager.EFFECT_INFO.fisheye.mask) !== 0) {
+        if ((effects & EffectManager.EFFECT_INFO.fisheye.mask) !== 0) {
             // vec2 vec = (texcoord0 - kCenter) / kCenter;
             const vX = (dst[0] - CENTER_X) / CENTER_X;
             const vY = (dst[1] - CENTER_Y) / CENTER_Y;

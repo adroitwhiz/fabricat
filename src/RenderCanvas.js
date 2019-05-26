@@ -7,7 +7,7 @@ const Drawable = require('./Drawable');
 const Rectangle = require('./Rectangle');
 const PenSkin = require('./PenSkin');
 const RenderConstants = require('./RenderConstants');
-const ShaderManager = require('./ShaderManager');
+const EffectManager = require('./EffectManager');
 const SVGSkin = require('./SVGSkin');
 const TextBubbleSkin = require('./TextBubbleSkin');
 const log = require('./util/log');
@@ -170,7 +170,7 @@ class RenderCanvas extends EventEmitter {
         this.resize(this._nativeSize[0], this._nativeSize[1]);
 
         if (createDebugCanvas) {
-            this.setDebugCanvas(document.body.appendChild(document.createElement("canvas")));
+            this.setDebugCanvas(document.body.appendChild(document.createElement('canvas')));
 
             this._debugCanvas.style.position = 'absolute';
             this._debugCanvas.style.top = '0px';
@@ -600,7 +600,7 @@ class RenderCanvas extends EventEmitter {
 
         matrix.mat2d.multiply(this._drawProjection, this._scaleMatrix, this._projection);
 
-        this._drawThese(this._drawList, this._drawProjection, {dstCanvas: this.canvas});
+        this._drawThese(this._drawList, this._drawProjection);
 
         if (this._snapshotCallbacks.length > 0) {
             const snapshot = this.canvas.toDataURL();
@@ -1307,8 +1307,7 @@ class RenderCanvas extends EventEmitter {
         if (opts.dstCanvas) {
             ctx = opts.dstCanvas.getContext('2d');
         } else {
-            //ctx = this.ctx;
-            console.warn('No canvas specified');
+            ctx = this.ctx;
         }
 
         ctx.save();
@@ -1341,42 +1340,32 @@ class RenderCanvas extends EventEmitter {
             let effectBits = drawable.getEnabledEffects();
             effectBits &= opts.hasOwnProperty('effectMask') ? opts.effectMask : effectBits;
 
-            let tex = drawable.skin.getTexture(drawableScale);
-
-            if (effectBits !== 0) {
-                ctx.save();
-
-                // Ghost effect
-                if ((effectBits & ShaderManager.EFFECT_INFO.ghost.mask) !== 0) {
-                    ctx.globalAlpha = drawable._effects[ShaderManager.EFFECT_INFO.ghost.uniformName];
-                }
-    
-                // Color effect
-                if ((effectBits & ShaderManager.EFFECT_INFO.color.mask) !== 0) {
-                    const tmpCtx = this._tempCanvasCtx;
-                    tmpCtx.width = drawableScale[0];
-                    tmpCtx.height = drawableScale[1];
-                    tmpCtx.filter = drawable._effects[ShaderManager.EFFECT_INFO.color.uniformName];
-                    tmpCtx.clearRect(0, 0, drawableScale[0], drawableScale[1]);
-                    tmpCtx.drawImage(tex, 0, 0);
-                    tex = this._tempCanvas;
-    
-                    if (drawable.skin instanceof SVGSkin) {
-                        ctx.imageSmoothingEnabled = true;
-                    }
-                }
-            }
-            
-
-            matrix.mat2d.multiply(mat, projection, drawable.getTransform());
-            ctx.setTransform(mat[0], mat[1], mat[2], mat[3], mat[4], mat[5]);
+            const tex = drawable.skin.getTexture(drawableScale);
 
             if (tex) {
-                ctx.drawImage(tex, 0, 0);
-            }
+                if (effectBits !== 0) {
+                    ctx.save();
 
-            if (effectBits !== 0) {
-                ctx.restore();
+                    // Ghost effect
+                    if ((effectBits & EffectManager.EFFECT_INFO.ghost.mask) !== 0) {
+                        ctx.globalAlpha = drawable._effects.color;
+                    }
+        
+                    // Color effect
+                    if ((effectBits & EffectManager.EFFECT_INFO.color.mask) !== 0) {
+                        ctx.filter = `hue-rotate(${(drawable._effects.color % 1) * 360}deg)`;
+                    }
+                }
+                
+
+                matrix.mat2d.multiply(mat, projection, drawable.getTransform());
+                ctx.setTransform(mat[0], mat[1], mat[2], mat[3], mat[4], mat[5]);
+            
+                ctx.drawImage(tex, 0, 0);
+
+                if (effectBits !== 0) {
+                    ctx.restore();
+                }
             }
         }
 

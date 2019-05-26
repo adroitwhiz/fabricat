@@ -1,8 +1,9 @@
 const matrix = require('gl-matrix');
 
+const EffectTransform = require('./EffectTransform');
 const Rectangle = require('./Rectangle');
 const RenderConstants = require('./RenderConstants');
-const ShaderManager = require('./ShaderManager');
+const EffectManager = require('./EffectManager');
 const Skin = require('./Skin');
 
 /**
@@ -69,12 +70,12 @@ class Drawable {
         // TODO
         this._effects = [];
 
-        const numEffects = ShaderManager.EFFECTS.length;
+        const numEffects = EffectManager.EFFECTS.length;
         for (let index = 0; index < numEffects; ++index) {
-            const effectName = ShaderManager.EFFECTS[index];
-            const effectInfo = ShaderManager.EFFECT_INFO[effectName];
+            const effectName = EffectManager.EFFECTS[index];
+            const effectInfo = EffectManager.EFFECT_INFO[effectName];
             const converter = effectInfo.converter;
-            this._effects[effectInfo.uniformName] = converter(0);
+            this._effects[effectInfo.effectName] = converter(0);
         }
 
         this._position = matrix.vec2.create();
@@ -237,19 +238,19 @@ class Drawable {
         if (dirty) {
             this.setTransformDirty();
         }
-        const numEffects = ShaderManager.EFFECTS.length;
+        const numEffects = EffectManager.EFFECTS.length;
         for (let index = 0; index < numEffects; ++index) {
-            const effectName = ShaderManager.EFFECTS[index];
+            const effectName = EffectManager.EFFECTS[index];
             if (effectName in properties) {
                 const rawValue = properties[effectName];
-                const effectInfo = ShaderManager.EFFECT_INFO[effectName];
+                const effectInfo = EffectManager.EFFECT_INFO[effectName];
                 if (rawValue) {
                     this._effectBits |= effectInfo.mask;
                 } else {
                     this._effectBits &= ~effectInfo.mask;
                 }
                 const converter = effectInfo.converter;
-                this._effects[effectInfo.uniformName] = converter(rawValue);
+                this._effects[effectInfo.effectName] = converter(rawValue);
                 if (effectInfo.shapeChanges) {
                     this.setConvexHullDirty();
                 }
@@ -504,7 +505,7 @@ class Drawable {
             this.transformMatrix,
             [1 / this.skin.sizeRatio, 1 / this.skin.sizeRatio]
         );
-        
+
         for (let i = 0; i < this._convexHullPoints.length; i++) {
             matrix.vec2.transformMat2d(
                 this._transformedHullPoints[i],
@@ -584,10 +585,7 @@ class Drawable {
     static sampleColor4b (vec, drawable, dst) {
         const localPosition = getLocalPosition(drawable, vec);
 
-        return drawable.skin._silhouette.colorAtNearest(localPosition, dst);
-
-        // TODO: reimplement for certain effects
-        /* if (localPosition[0] < 0 || localPosition[1] < 0 ||
+        if (localPosition[0] < 0 || localPosition[1] < 0 ||
             localPosition[0] > 1 || localPosition[1] > 1) {
             dst[3] = 0;
             return dst;
@@ -597,7 +595,7 @@ class Drawable {
         // drawable.useNearest ?
              drawable.skin._silhouette.colorAtNearest(localPosition, dst);
         // : drawable.skin._silhouette.colorAtLinear(localPosition, dst);
-        return EffectTransform.transformColor(drawable, textColor, textColor); */
+        return EffectTransform.transformColor(drawable, textColor, textColor);
     }
 }
 

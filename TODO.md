@@ -1,6 +1,7 @@
 ## Possible future improvements
  - Effects:
-	- Color + brightness (possibly)
+	- Accurate color
+	- Brightness (possibly)
 	- Mosaic (with some complex trickery)
 	- Pixelate (with more trickery)
  - Remove/optimize `Silhouette`
