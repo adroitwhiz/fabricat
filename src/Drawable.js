@@ -499,7 +499,12 @@ class Drawable {
      * @private
      */
     _getTransformedHullPoints () {
-        matrix.mat2d.scale(this._convexHullMatrix, this.transformMatrix, [this.skin.sizeRatio, this.skin.sizeRatio]);
+        matrix.mat2d.scale(
+            this._convexHullMatrix,
+            this.transformMatrix,
+            [1 / this.skin.sizeRatio, 1 / this.skin.sizeRatio]
+        );
+        
         for (let i = 0; i < this._convexHullPoints.length; i++) {
             matrix.vec2.transformMat2d(
                 this._transformedHullPoints[i],

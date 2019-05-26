@@ -12,6 +12,8 @@ const SVGSkin = require('./SVGSkin');
 const TextBubbleSkin = require('./TextBubbleSkin');
 const log = require('./util/log');
 
+const createDebugCanvas = false;
+
 const __isTouchingDrawablesPoint = matrix.vec2.create();
 const __candidatesBounds = new Rectangle();
 const __touchingColor = new Uint8ClampedArray(4);
@@ -165,6 +167,15 @@ class RenderCanvas extends EventEmitter {
         this.setBackgroundColor(1, 1, 1);
         this.setStageSize(xLeft || -240, xRight || 240, yBottom || -180, yTop || 180);
         this.resize(this._nativeSize[0], this._nativeSize[1]);
+
+        if (createDebugCanvas) {
+            this.setDebugCanvas(document.body.appendChild(document.createElement("canvas")));
+
+            this._debugCanvas.style.position = 'absolute';
+            this._debugCanvas.style.top = '0px';
+            this._debugCanvas.style.left = '0px';
+            this._debugCanvas.style.zIndex = '999';
+        }
     }
 
     /**
@@ -606,7 +617,7 @@ class RenderCanvas extends EventEmitter {
             this._debugCanvas.height = this.ctx.canvas.height;
             const context = this._debugCanvas.getContext('2d');
             context.drawImage(this.ctx.canvas, 0, 0);
-            context.strokeStyle = '#FF0000';
+            context.strokeStyle = '#FF00FF';
             const pr = window.devicePixelRatio;
             context.strokeRect(
                 pr * (bounds.left + (this._nativeSize[0] / 2)),
@@ -739,9 +750,10 @@ class RenderCanvas extends EventEmitter {
      * @returns {boolean} True if the Drawable is touching one of candidateIDs.
      */
     isTouchingDrawables (drawableID, candidateIDs = this._drawList) {
-        const candidates = this._candidatesTouching(drawableID,
+        /*const candidates = this._candidatesTouching(drawableID,
             // even if passed an invisible drawable, we will NEVER touch it!
-            candidateIDs.filter(id => this._allDrawables[id]._visible));
+            candidateIDs.filter(id => this._allDrawables[id]._visible));*/
+        const candidates = this._drawList.filter(id => id !== drawableID && this._allDrawables[id]._visible);
         // if we are invisble we don't touch anything.
         if (candidates.length === 0 || !this._allDrawables[drawableID]._visible) {
             return false;
