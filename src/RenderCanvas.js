@@ -750,10 +750,9 @@ class RenderCanvas extends EventEmitter {
      * @returns {boolean} True if the Drawable is touching one of candidateIDs.
      */
     isTouchingDrawables (drawableID, candidateIDs = this._drawList) {
-        /*const candidates = this._candidatesTouching(drawableID,
+        const candidates = this._candidatesTouching(drawableID,
             // even if passed an invisible drawable, we will NEVER touch it!
-            candidateIDs.filter(id => this._allDrawables[id]._visible));*/
-        const candidates = this._drawList.filter(id => id !== drawableID && this._allDrawables[id]._visible);
+            candidateIDs.filter(id => this._allDrawables[id]._visible));
         // if we are invisble we don't touch anything.
         if (candidates.length === 0 || !this._allDrawables[drawableID]._visible) {
             return false;
