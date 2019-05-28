@@ -58,7 +58,6 @@ class Drawable {
 
         this.transformMatrix = matrix.mat2d.create();
 
-        // TODO
         this._effects = [];
 
         const numEffects = EffectManager.EFFECTS.length;
