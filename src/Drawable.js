@@ -32,8 +32,8 @@ const getLocalPosition = (drawable, vec) => {
 
     const skinSize = drawable.skin.size;
     const skinRatio = drawable.skin.sizeRatio;
-    localPosition[0] /= (skinSize[0] / skinRatio);
-    localPosition[1] /= (skinSize[1] / skinRatio);
+    localPosition[0] /= (skinSize[0] * skinRatio);
+    localPosition[1] /= (skinSize[1] * skinRatio);
 
     // Apply texture effect transform if the localPosition is within the drawable's space.
     // Disabled for now because effects aren't implemented.
@@ -267,8 +267,8 @@ class Drawable {
             const center0 = skinCenter[0];
             const center1 = skinCenter[1];
             const rotationCenter = this._rotationCenter;
-            rotationCenter[0] = Math.round(center0) / sizeRatio;
-            rotationCenter[1] = Math.round(center1) / sizeRatio;
+            rotationCenter[0] = Math.round(center0) * sizeRatio;
+            rotationCenter[1] = Math.round(center1) * sizeRatio;
 
             this._rotationCenterDirty = false;
         }
@@ -276,8 +276,8 @@ class Drawable {
         if (this._skinScaleDirty && this.skin !== null) {
             const sizeRatio = this.skin.sizeRatio;
 
-            this._scaleMatrix[0] = sizeRatio * this._scale[0] * 0.01;
-            this._scaleMatrix[3] = sizeRatio * this._scale[1] * -0.01;
+            this._scaleMatrix[0] = (this._scale[0] * 0.01) / sizeRatio;
+            this._scaleMatrix[3] = (this._scale[1] * -0.01) / sizeRatio;
 
             this._skinScaleDirty = false;
         }
@@ -418,8 +418,8 @@ class Drawable {
         }
         if (this._AABBDirty) {
             const skin = this.skin;
-            const size0 = skin.size[0] / skin.sizeRatio;
-            const size1 = skin.size[1] / skin.sizeRatio;
+            const size0 = skin.size[0] * skin.sizeRatio;
+            const size1 = skin.size[1] * skin.sizeRatio;
             matrix.vec2.set(this._aabbPoints[1], size0, 0);
             matrix.vec2.set(this._aabbPoints[2], size0, size1);
             matrix.vec2.set(this._aabbPoints[3], 0, size1);
@@ -464,7 +464,7 @@ class Drawable {
         matrix.mat2d.scale(
             this._convexHullMatrix,
             this.transformMatrix,
-            [1 / this.skin.sizeRatio, 1 / this.skin.sizeRatio]
+            [this.skin.sizeRatio, this.skin.sizeRatio]
         );
 
         for (let i = 0; i < this._convexHullPoints.length; i++) {

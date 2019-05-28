@@ -52,10 +52,10 @@ class BitmapSkin extends Skin {
     }
 
     /**
-     * @return {Array<number>} the ratio of this skin's "native" size to its texture's size.
+     * @return {Array<number>} the ratio of this skin's texture size to its native size.
      */
     get sizeRatio () {
-        return 0.5;
+        return 2;
     }
 
     /**
