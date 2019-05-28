@@ -1343,7 +1343,6 @@ class RenderCanvas extends EventEmitter {
                         ctx.filter = `hue-rotate(${(drawable._effects.color % 1) * 360}deg)`;
                     }
                 }
-                
 
                 matrix.mat2d.multiply(mat, projection, drawable.getTransform());
                 ctx.setTransform(mat[0], mat[1], mat[2], mat[3], mat[4], mat[5]);

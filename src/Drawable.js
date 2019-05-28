@@ -26,18 +26,9 @@ const __isTouchingPosition = matrix.vec2.create();
 const getLocalPosition = (drawable, vec) => {
     // Transfrom from world coordinates to Drawable coordinates.
     const localPosition = __isTouchingPosition;
-    const v0 = vec[0];
-    const v1 = vec[1];
-    const m = drawable._inverseMatrix;
-    // var v2 = v[2];
-    const d = (v0 * m[3]) + (v1 * m[7]) + m[15];
-    // The RenderCanvas quad flips the texture's X axis. So rendered bottom
-    // left is 1, 0 and the top right is 0, 1. Flip the X axis so
-    // localPosition matches that transformation.
-    localPosition[0] = 0.5 - (((v0 * m[0]) + (v1 * m[4]) + m[12]) / d);
-    localPosition[1] = (((v0 * m[1]) + (v1 * m[5]) + m[13]) / d) + 0.5;
+    const inverse = drawable._inverseMatrix;
 
-    matrix.vec2.transformMat2d(localPosition, vec, m);
+    matrix.vec2.transformMat2d(localPosition, vec, inverse);
 
     const skinSize = drawable.skin.size;
     const skinRatio = drawable.skin.sizeRatio;
