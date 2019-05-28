@@ -114,13 +114,6 @@ class Drawable {
     }
 
     /**
-     * Draw this drawable to the renderer's canvas.
-     */
-    draw () {
-
-    }
-
-    /**
      * Dispose of this Drawable. Do not use it after calling this method.
      */
     dispose () {
