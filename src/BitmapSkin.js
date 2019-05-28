@@ -79,12 +79,12 @@ class BitmapSkin extends Skin {
     /**
      * Set the contents of this skin to a snapshot of the provided bitmap data.
      * @param {ImageData|HTMLImageElement|HTMLCanvasElement|HTMLVideoElement} bitmapData - new contents for this skin.
-     * @param {int} [costumeResolution=1] - The resolution to use for this bitmap.
+     * @param {int} [costumeResolution=2] - The resolution to use for this bitmap.
      * @param {Array<number>} [rotationCenter] - Optional rotation center for the bitmap. If not supplied, it will be
      * calculated from the bounding box
      * @fires Skin.event:WasAltered
      */
-    setBitmap (bitmapData, costumeResolution, rotationCenter) {
+    setBitmap (bitmapData, costumeResolution = 2, rotationCenter) {
         // We can't just set our texture to bitmapData, because it may be changed/reused for loading other costumes.
         // Instead, we draw it to our own internal canvas.
         const texSize = BitmapSkin._getBitmapSize(bitmapData);
@@ -97,7 +97,6 @@ class BitmapSkin extends Skin {
         this._silhouette.update(bitmapData);
 
         // Do these last in case any of the above throws an exception
-        this._costumeResolution = costumeResolution || 2;
         this._textureSize = BitmapSkin._getBitmapSize(bitmapData);
 
         this._skinSize[0] = this._textureSize[0] / costumeResolution;
