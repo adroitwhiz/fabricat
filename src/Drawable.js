@@ -354,32 +354,10 @@ class Drawable {
 
         const localPosition = getLocalPosition(this, vec);
 
-        if (this.useNearest) {
+        if (this.skin.isRaster) {
             return this.skin.isTouchingNearest(localPosition);
         }
         return this.skin.isTouchingLinear(localPosition);
-    }
-
-    /**
-     * Should the drawable use NEAREST NEIGHBOR or LINEAR INTERPOLATION mode
-     */
-    get useNearest () {
-        // Raster skins (bitmaps) should always prefer nearest neighbor
-        if (this.skin.isRaster) {
-            return true;
-        }
-
-        // We can't use nearest neighbor unless we are a multiple of 90 rotation
-        if (this._direction % 90 !== 0) {
-            return false;
-        }
-
-        // If the scale of the skin is very close to 100 (0.99999 variance is okay I guess)
-        if (Math.abs(this.scale[0]) > 99 && Math.abs(this.scale[0]) < 101 &&
-            Math.abs(this.scale[1]) > 99 && Math.abs(this.scale[1]) < 101) {
-            return true;
-        }
-        return false;
     }
 
     /**
@@ -576,7 +554,7 @@ class Drawable {
         }
         const textColor =
         // commenting out to only use nearest for now
-        // drawable.useNearest ?
+        // drawable.skin.isRaster ?
              drawable.skin._silhouette.colorAtNearest(localPosition, dst);
         // : drawable.skin._silhouette.colorAtLinear(localPosition, dst);
         return EffectTransform.transformColor(drawable, textColor, textColor);
