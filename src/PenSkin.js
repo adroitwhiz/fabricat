@@ -20,7 +20,6 @@ const DefaultPenAttributes = {
     diameter: 1
 };
 
-
 class PenSkin extends Skin {
     /**
      * Create a Skin which implements a Scratch pen layer.
@@ -40,9 +39,6 @@ class PenSkin extends Skin {
 
         /** @type {HTMLCanvasElement} */
         this._canvas = document.createElement('canvas');
-
-        /** @type {boolean} */
-        this._canvasDirty = false;
 
         /** @type {boolean} */
         this._silhouetteDirty = false;
@@ -88,7 +84,6 @@ class PenSkin extends Skin {
     clear () {
         const ctx = this._canvas.getContext('2d');
         ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
-        this._canvasDirty = true;
         this._silhouetteDirty = true;
     }
 
@@ -122,7 +117,6 @@ class PenSkin extends Skin {
         ctx.moveTo(this._rotationCenter[0] + x0 + offset, this._rotationCenter[1] - y0 + offset);
         ctx.lineTo(this._rotationCenter[0] + x1 + offset, this._rotationCenter[1] - y1 + offset);
         ctx.stroke();
-        this._canvasDirty = true;
         this._silhouetteDirty = true;
     }
 
@@ -135,7 +129,6 @@ class PenSkin extends Skin {
     drawStamp (stampElement, x, y) {
         const ctx = this._canvas.getContext('2d');
         ctx.drawImage(stampElement, this._rotationCenter[0] + x, this._rotationCenter[1] - y);
-        this._canvasDirty = true;
         this._silhouetteDirty = true;
     }
 
@@ -159,7 +152,6 @@ class PenSkin extends Skin {
         this._canvas.height = height;
         this._rotationCenter[0] = width / 2;
         this._rotationCenter[1] = height / 2;
-        this._canvasDirty = true;
         this._silhouetteDirty = true;
     }
 
@@ -190,9 +182,6 @@ class PenSkin extends Skin {
      */
     updateSilhouette () {
         if (this._silhouetteDirty) {
-            if (this._canvasDirty) {
-                this.getTexture();
-            }
             this._silhouette.update(this._canvas);
         }
     }
