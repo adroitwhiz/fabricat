@@ -34,6 +34,13 @@ class Skin extends EventEmitter {
         this._rotationCenter = matrix.vec2.create();
 
         /**
+         * The "native" size, in texels, of this skin.
+         * @member size
+         * @abstract
+         * @type {Array<number>}
+         */
+
+        /**
          * A silhouette to store touching data, skins are responsible for keeping it up to date.
          * @private
          */
@@ -75,14 +82,6 @@ class Skin extends EventEmitter {
      */
     get rotationCenter () {
         return this._rotationCenter;
-    }
-
-    /**
-     * @abstract
-     * @return {Array<number>} the "native" size, in texels, of this skin.
-     */
-    get size () {
-        return [0, 0];
     }
 
     /**

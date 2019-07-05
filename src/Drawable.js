@@ -4,7 +4,6 @@ const EffectTransform = require('./EffectTransform');
 const Rectangle = require('./Rectangle');
 const RenderConstants = require('./RenderConstants');
 const EffectManager = require('./EffectManager');
-const Skin = require('./Skin');
 
 /**
  * An internal workspace for calculating texture locations from world vectors
@@ -108,8 +107,6 @@ class Drawable {
         this._convexHullDirty = true;
         this._convexHullMatrix = matrix.mat2d.create();
         this._preciseBounds = new Rectangle();
-
-        this._skinWasAltered = this._skinWasAltered.bind(this);
     }
 
     /**
@@ -148,13 +145,7 @@ class Drawable {
      */
     set skin (newSkin) {
         if (this._skin !== newSkin) {
-            if (this._skin) {
-                this._skin.removeListener(Skin.Events.WasAltered, this._skinWasAltered);
-            }
             this._skin = newSkin;
-            if (this._skin) {
-                this._skin.addListener(Skin.Events.WasAltered, this._skinWasAltered);
-            }
             this._skinWasAltered();
         }
     }

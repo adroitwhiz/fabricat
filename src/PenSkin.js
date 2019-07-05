@@ -1,3 +1,5 @@
+const matrix = require('gl-matrix');
+
 const RenderConstants = require('./RenderConstants');
 const Skin = require('./Skin');
 
@@ -40,6 +42,9 @@ class PenSkin extends Skin {
         /** @type {HTMLCanvasElement} */
         this._canvas = document.createElement('canvas');
 
+        /** @type {Array<number>} */
+        this.size = matrix.vec2.create();
+
         /** @type {boolean} */
         this._silhouetteDirty = false;
 
@@ -65,13 +70,6 @@ class PenSkin extends Skin {
     }
 
     /**
-     * @return {Array<number>} the "native" size, in texels, of this skin. [width, height]
-     */
-    get size () {
-        return [this._canvas.width, this._canvas.height];
-    }
-
-    /**
      * @return {HTMLCanvasElement} a draw-able canvas of this pen skin
      */
     getTexture () {
@@ -83,7 +81,7 @@ class PenSkin extends Skin {
      */
     clear () {
         const ctx = this._canvas.getContext('2d');
-        ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+        ctx.clearRect(0, 0, this.size[0], this.size[1]);
         this._silhouetteDirty = true;
     }
 
@@ -148,8 +146,8 @@ class PenSkin extends Skin {
     _setCanvasSize (canvasSize) {
         const [width, height] = canvasSize;
 
-        this._canvas.width = width;
-        this._canvas.height = height;
+        this._canvas.width = this.size[0] = width;
+        this._canvas.height = this.size[1] = height;
         this._rotationCenter[0] = width / 2;
         this._rotationCenter[1] = height / 2;
         this._silhouetteDirty = true;

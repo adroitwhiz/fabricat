@@ -2,14 +2,17 @@ const EventEmitter = require('events');
 
 const matrix = require('gl-matrix');
 
+const Skin = require('./Skin');
 const BitmapSkin = require('./BitmapSkin');
-const Drawable = require('./Drawable');
-const Rectangle = require('./Rectangle');
 const PenSkin = require('./PenSkin');
-const RenderConstants = require('./RenderConstants');
-const EffectManager = require('./EffectManager');
 const SVGSkin = require('./SVGSkin');
 const TextBubbleSkin = require('./TextBubbleSkin');
+
+const Drawable = require('./Drawable');
+const Rectangle = require('./Rectangle');
+const RenderConstants = require('./RenderConstants');
+const EffectManager = require('./EffectManager');
+
 const log = require('./util/log');
 
 const createDebugCanvas = false;
@@ -264,6 +267,20 @@ class RenderCanvas extends EventEmitter {
     }
 
     /**
+     * Notify Drawables whose skin is the skin that changed.
+     * @param {Skin} skin - the skin that changed.
+     * @private
+     */
+    _skinWasAltered (skin) {
+        for (let i = 0; i < this._allDrawables.length; i++) {
+            const drawable = this._allDrawables[i];
+            if (drawable && drawable._skin === skin) {
+                drawable._skinWasAltered();
+            }
+        }
+    }
+
+    /**
      * Create a new bitmap skin from a snapshot of the provided bitmap data.
      * @param {ImageData|HTMLImageElement|HTMLCanvasElement|HTMLVideoElement} bitmapData - new contents for this skin.
      * @param {!int} [costumeResolution=1] - The resolution to use for this bitmap.
@@ -275,6 +292,7 @@ class RenderCanvas extends EventEmitter {
         const skinId = this._nextSkinId++;
         const newSkin = new BitmapSkin(skinId, this);
         newSkin.setBitmap(bitmapData, costumeResolution, rotationCenter);
+        newSkin.addListener(Skin.Events.WasAltered, this._skinWasAltered.bind(this, newSkin));
         this._allSkins[skinId] = newSkin;
         return skinId;
     }
@@ -290,6 +308,7 @@ class RenderCanvas extends EventEmitter {
         const skinId = this._nextSkinId++;
         const newSkin = new SVGSkin(skinId, this);
         newSkin.setSVG(svgData, rotationCenter);
+        newSkin.addListener(Skin.Events.WasAltered, this._skinWasAltered.bind(this, newSkin));
         this._allSkins[skinId] = newSkin;
         return skinId;
     }
@@ -301,6 +320,7 @@ class RenderCanvas extends EventEmitter {
     createPenSkin () {
         const skinId = this._nextSkinId++;
         const newSkin = new PenSkin(skinId, this);
+        newSkin.addListener(Skin.Events.WasAltered, this._skinWasAltered.bind(this, newSkin));
         this._allSkins[skinId] = newSkin;
         return skinId;
     }
@@ -317,6 +337,7 @@ class RenderCanvas extends EventEmitter {
         const skinId = this._nextSkinId++;
         const newSkin = new TextBubbleSkin(skinId, this);
         newSkin.setTextBubble(type, text, pointsLeft);
+        newSkin.addListener(Skin.Events.WasAltered, this._skinWasAltered.bind(this, newSkin));
         this._allSkins[skinId] = newSkin;
         return skinId;
     }

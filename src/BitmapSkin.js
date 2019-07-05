@@ -24,7 +24,7 @@ class BitmapSkin extends Skin {
         this._textureSize = [0, 0];
 
         /** @type {Array<int>} */
-        this._skinSize = [0, 0];
+        this.size = [0, 0];
     }
 
     /**
@@ -42,13 +42,6 @@ class BitmapSkin extends Skin {
      */
     get isRaster () {
         return true;
-    }
-
-    /**
-     * @return {Array<number>} the "native" size, in texels, of this skin.
-     */
-    get size () {
-        return this._skinSize;
     }
 
     /**
@@ -99,8 +92,8 @@ class BitmapSkin extends Skin {
         // Do these last in case any of the above throws an exception
         this._textureSize = BitmapSkin._getBitmapSize(bitmapData);
 
-        this._skinSize[0] = this._textureSize[0] / costumeResolution;
-        this._skinSize[1] = this._textureSize[1] / costumeResolution;
+        this.size[0] = this._textureSize[0] / costumeResolution;
+        this.size[1] = this._textureSize[1] / costumeResolution;
 
         if (typeof rotationCenter === 'undefined') rotationCenter = this.calculateRotationCenter();
         this.setRotationCenter.apply(this, rotationCenter);
