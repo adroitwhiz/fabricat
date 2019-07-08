@@ -42,12 +42,15 @@ class PenSkin extends Skin {
         /** @type {HTMLCanvasElement} */
         this._canvas = document.createElement('canvas');
 
+        /** @type {CanvasRenderingContext2D} */
+        this._ctx = this._canvas.getContext('2d');
+
         /** @type {Array<number>} */
         this.size = matrix.vec2.create();
 
         /** @type {boolean} */
         this._silhouetteDirty = false;
-
+        
         this.onNativeSizeChanged = this.onNativeSizeChanged.bind(this);
         this._renderer.on(RenderConstants.Events.NativeSizeChanged, this.onNativeSizeChanged);
 
@@ -80,8 +83,7 @@ class PenSkin extends Skin {
      * Clear the pen layer.
      */
     clear () {
-        const ctx = this._canvas.getContext('2d');
-        ctx.clearRect(0, 0, this.size[0], this.size[1]);
+        this._ctx.clearRect(0, 0, this.size[0], this.size[1]);
         this._silhouetteDirty = true;
     }
 
@@ -105,7 +107,7 @@ class PenSkin extends Skin {
      * @param {number} y1 - the Y coordinate of the end of the line.
      */
     drawLine (penAttributes, x0, y0, x1, y1) {
-        const ctx = this._canvas.getContext('2d');
+        const ctx = this._ctx;
         this._setAttributes(ctx, penAttributes);
 
         // Width 1 and 3 lines need to be offset by 0.5.
@@ -125,8 +127,7 @@ class PenSkin extends Skin {
      * @param {number} y - the Y coordinate of the stamp to draw.
      */
     drawStamp (stampElement, x, y) {
-        const ctx = this._canvas.getContext('2d');
-        ctx.drawImage(stampElement, this._rotationCenter[0] + x, this._rotationCenter[1] - y);
+        this._ctx.drawImage(stampElement, this._rotationCenter[0] + x, this._rotationCenter[1] - y);
         this._silhouetteDirty = true;
     }
 
@@ -180,7 +181,7 @@ class PenSkin extends Skin {
      */
     updateSilhouette () {
         if (this._silhouetteDirty) {
-            this._silhouette.update(this._canvas);
+            this._silhouette.update(this._ctx.getImageData(0, 0, this.size[0], this.size[1]));
         }
     }
 }

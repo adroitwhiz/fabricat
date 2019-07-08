@@ -87,10 +87,10 @@ class BitmapSkin extends Skin {
         this._ctx.clearRect(0, 0, texSize[0], texSize[1]);
         this._ctx.drawImage(bitmapData, 0, 0);
 
-        this._silhouette.update(bitmapData);
+        this._silhouette.update(this._ctx.getImageData(0, 0, texSize[0], texSize[1]));
 
         // Do these last in case any of the above throws an exception
-        this._textureSize = BitmapSkin._getBitmapSize(bitmapData);
+        this._textureSize = texSize;
 
         this.size[0] = this._textureSize[0] / costumeResolution;
         this.size[1] = this._textureSize[1] / costumeResolution;

@@ -1098,7 +1098,6 @@ class RenderCanvas extends EventEmitter {
         if (!drawable.skin || !drawable.skin.getTexture([100, 100])) return null;
 
         drawable.updateMatrix();
-        drawable.skin.updateSilhouette();
         const bounds = drawable.getFastBounds();
 
         // Limit queries to the stage size.
@@ -1135,7 +1134,6 @@ class RenderCanvas extends EventEmitter {
                 if (drawable.skin && drawable._visible) {
                     // Update the CPU position data
                     drawable.updateMatrix();
-                    drawable.skin.updateSilhouette();
                     const candidateBounds = drawable.getFastBounds();
                     if (bounds.intersects(candidateBounds)) {
                         result.push({
