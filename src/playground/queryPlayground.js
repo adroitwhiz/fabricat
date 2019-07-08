@@ -1,4 +1,4 @@
-const ScratchRender = require('../RenderCanvas');
+const Fabricat = require('../RenderCanvas');
 const getMousePosition = require('./getMousePosition');
 
 const renderCanvas = document.getElementById('renderCanvas');
@@ -23,7 +23,7 @@ const colors = {
     patternB: [0, 0, 255]
 };
 
-const renderer = new ScratchRender(renderCanvas);
+const renderer = new Fabricat(renderCanvas);
 
 const handleResizeRenderCanvas = () => {
     const halfWidth = renderCanvas.clientWidth / 2;
@@ -51,21 +51,21 @@ const handleCursorPositionChanged = () => {
             position: [cursorX, cursorY]
         });
 
-        renderer.setUseGpuMode(ScratchRender.UseGpuModes.ForceGPU);
+        renderer.setUseGpuMode(Fabricat.UseGpuModes.ForceGPU);
         renderer.setDebugCanvas(gpuQueryCanvas);
         const isGpuTouchingA = renderer.isTouchingColor(drawables.cursor, colors.patternA);
         const isGpuTouchingB = renderer.isTouchingColor(drawables.cursor, colors.patternB);
         labelGpuTouchingA.innerHTML = isGpuTouchingA ? 'yes' : 'no';
         labelGpuTouchingB.innerHTML = isGpuTouchingB ? 'yes' : 'no';
 
-        renderer.setUseGpuMode(ScratchRender.UseGpuModes.ForceCPU);
+        renderer.setUseGpuMode(Fabricat.UseGpuModes.ForceCPU);
         renderer.setDebugCanvas(cpuQueryCanvas);
         const isCpuTouchingA = renderer.isTouchingColor(drawables.cursor, colors.patternA);
         const isCpuTouchingB = renderer.isTouchingColor(drawables.cursor, colors.patternB);
         labelCpuTouchingA.innerHTML = isCpuTouchingA ? 'yes' : 'no';
         labelCpuTouchingB.innerHTML = isCpuTouchingB ? 'yes' : 'no';
 
-        renderer.setUseGpuMode(ScratchRender.UseGpuModes.Automatic);
+        renderer.setUseGpuMode(Fabricat.UseGpuModes.Automatic);
     }
 };
 inputCursorX.addEventListener('change', handleCursorPositionChanged);

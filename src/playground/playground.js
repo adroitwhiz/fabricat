@@ -1,9 +1,9 @@
-const ScratchRender = require('../RenderCanvas');
+const Fabricat = require('../RenderCanvas');
 const getMousePosition = require('./getMousePosition');
 
 const canvas = document.getElementById('scratch-stage');
 let fudge = 90;
-const renderer = new ScratchRender(canvas);
+const renderer = new Fabricat(canvas);
 renderer.setLayerGroupOrdering(['group1']);
 
 window.renderer = renderer;

@@ -64,7 +64,7 @@ module.exports = [
             'fabricat.min': './src/index.js'
         },
         output: {
-            library: 'ScratchRender',
+            library: 'Fabricat',
             libraryTarget: 'umd',
             path: path.resolve('dist', 'web'),
             filename: '[name].js'
@@ -77,7 +77,7 @@ module.exports = [
             fabricat: './src/index.js'
         },
         output: {
-            library: 'ScratchRender',
+            library: 'Fabricat',
             libraryTarget: 'commonjs2',
             path: path.resolve('dist', 'node'),
             filename: '[name].js'
