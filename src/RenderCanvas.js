@@ -711,6 +711,16 @@ class RenderCanvas extends EventEmitter {
     }
 
     /**
+     * Update the Silhouettes for every Drawable in the given array of candidates.
+     * @param {Array< {id, drawable, intersection} >} candidates The Drawable candidates to update the Silhouettes of.
+     */
+    _updateSilhouettesForCandidates (candidates) {
+        for (const candidate of candidates) {
+            candidate.drawable.skin.updateSilhouette();
+        }
+    }
+
+    /**
      * Check if a particular Drawable is touching a particular color.
      * Unlike touching drawable, if the "tester" is invisble, we will still test.
      * @param {int} drawableID The ID of the Drawable to check.
@@ -736,6 +746,9 @@ class RenderCanvas extends EventEmitter {
         const point = __isTouchingDrawablesPoint;
         const color = __touchingColor;
         const hasMask = Boolean(mask3b);
+
+        this._updateSilhouettesForCandidates(candidates);
+        drawable.skin.updateSilhouette();
 
         // Scratch Space - +y is top
         for (let y = bounds.bottom; y <= bounds.top; y++) {
@@ -780,7 +793,12 @@ class RenderCanvas extends EventEmitter {
         // Get the union of all the candidates intersections.
         const bounds = this._candidatesBounds(candidates);
 
+        // Ensure the candidates' Silhouettes are up-to-date.
+        this._updateSilhouettesForCandidates(candidates);
+
         const drawable = this._allDrawables[drawableID];
+        drawable.skin.updateSilhouette();
+
         const point = __isTouchingDrawablesPoint;
 
         for (let x = bounds.left; x <= bounds.right; x++) {
