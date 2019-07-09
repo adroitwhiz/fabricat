@@ -121,17 +121,6 @@ class PenSkin extends Skin {
     }
 
     /**
-     * Stamp an image onto the pen layer.
-     * @param {HTMLCanvasElement|HTMLImageElement|HTMLVideoElement} stampElement - the element to use as the stamp.
-     * @param {number} x - the X coordinate of the stamp to draw.
-     * @param {number} y - the Y coordinate of the stamp to draw.
-     */
-    drawStamp (stampElement, x, y) {
-        this._ctx.drawImage(stampElement, this._rotationCenter[0] + x, this._rotationCenter[1] - y);
-        this._silhouetteDirty = true;
-    }
-
-    /**
      * React to a change in the renderer's native size.
      * @param {object} event - The change event.
      */
