@@ -84,8 +84,6 @@ class Drawable {
         this._visible = true;
         this._effectBits = 0;
 
-        this._boundsMatrix = matrix.mat2d.create();
-
         this._aabbPoints = [
             matrix.vec2.create(),
             matrix.vec2.create(),
