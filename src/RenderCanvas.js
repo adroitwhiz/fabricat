@@ -1153,6 +1153,11 @@ class RenderCanvas extends EventEmitter {
                     // Update the CPU position data
                     drawable.updateMatrix();
                     const candidateBounds = drawable.getFastBounds();
+
+                    // Push bounds out to integers. If a drawable extends out into half a pixel,
+                    // that half-pixel still needs to be tested.
+                    candidateBounds.snapToInt();
+
                     if (bounds.intersects(candidateBounds)) {
                         result.push({
                             id,
