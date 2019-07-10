@@ -5,6 +5,7 @@ const canvas = document.getElementById('scratch-stage');
 let fudge = 90;
 const renderer = new Fabricat(canvas);
 renderer.setLayerGroupOrdering(['group1']);
+window.renderer = renderer;
 
 window.renderer = renderer;
 
