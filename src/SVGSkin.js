@@ -90,7 +90,7 @@ class SVGSkin extends Skin {
         // center used to render will be updated later.
         this._rawRotationCenter = [NaN, NaN];
 
-        this._svgRenderer._draw(svgData, 1, () => {
+        this._svgRenderer._draw(1, () => {
             this._texture.src = `data:image/svg+xml;utf8,${encodeURIComponent(this._svgRenderer.toString(true))}`;
 
             this._texture.onload = () => {
