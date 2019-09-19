@@ -20,7 +20,7 @@ let __SilhouetteUpdateCanvas;
  * @return {number} Alpha value for x/y position
  */
 const getPoint = ({_width: width, _height: height, _colorData: data}, x, y) => {
-    // 0 if outside bouds, otherwise read from data.
+    // 0 if outside bounds, otherwise read from data.
     if (x >= width || y >= height || x < 0 || y < 0) {
         return 0;
     }
@@ -126,8 +126,8 @@ class Silhouette {
     colorAtNearest (vec, dst) {
         return getColor4b(
             this,
-            Math.round(vec[0] * this._width),
-            Math.round(vec[1] * this._height),
+            Math.floor(vec[0] * this._width),
+            Math.floor(vec[1] * this._height),
             dst
         );
     }
@@ -140,8 +140,8 @@ class Silhouette {
      * @returns {Uint8ClampedArray} dst
      */
     colorAtLinear (vec, dst) {
-        const x = vec[0] * this._width;
-        const y = vec[1] * this._height;
+        const x = (vec[0] * this._width) - 0.5;
+        const y = (vec[1] * this._height) - 0.5;
 
         const x1D = x % 1;
         const y1D = y % 1;
@@ -173,8 +173,8 @@ class Silhouette {
         if (!this._colorData) return;
         return getPoint(
             this,
-            Math.round(vec[0] * this._width),
-            Math.round(vec[1] * this._height)
+            Math.floor(vec[0] * this._width),
+            Math.floor(vec[1] * this._height)
         ) > 0;
     }
 
@@ -186,8 +186,8 @@ class Silhouette {
      */
     isTouchingLinear (vec) {
         if (!this._colorData) return;
-        const x = Math.round(vec[0] * this._width);
-        const y = Math.round(vec[1] * this._height);
+        const x = Math.floor((vec[0] * this._width) - 0.5);
+        const y = Math.floor((vec[1] * this._height) - 0.5);
         return getPoint(this, x, y) > 0 ||
             getPoint(this, x + 1, y) > 0 ||
             getPoint(this, x, y + 1) > 0 ||

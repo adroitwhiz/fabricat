@@ -11,6 +11,7 @@ const EffectManager = require('./EffectManager');
  * @type {matrix.vec2}
  */
 const __isTouchingPosition = matrix.vec2.create();
+const __isTouchingVec = matrix.vec2.create();
 
 /**
  * Convert a scratch space location into a texture space float.  Uses the
@@ -23,11 +24,14 @@ const __isTouchingPosition = matrix.vec2.create();
  * @return {matrix.vec2} [x,y] texture space float vector - transformed by effects and matrix
  */
 const getLocalPosition = (drawable, vec) => {
-    // Transfrom from world coordinates to Drawable coordinates.
+    // Transform from world coordinates to Drawable coordinates.
     const localPosition = __isTouchingPosition;
     const inverse = drawable._inverseMatrix;
 
-    matrix.vec2.transformMat2d(localPosition, vec, inverse);
+    __isTouchingVec[0] = vec[0] - 0.5;
+    __isTouchingVec[1] = vec[1] + 0.5;
+
+    matrix.vec2.transformMat2d(localPosition, __isTouchingVec, inverse);
 
     const skinSize = drawable.skin.size;
     const skinRatio = drawable.skin.sizeRatio;
@@ -35,7 +39,7 @@ const getLocalPosition = (drawable, vec) => {
     localPosition[1] /= (skinSize[1] * skinRatio);
 
     // Apply texture effect transform if the localPosition is within the drawable's space.
-    // Disabled for now because effects aren't implemented.
+    // Disabled for now because distortion effects aren't implemented.
     /* if ((localPosition[0] >= 0 && localPosition[0] < 1) && (localPosition[1] >= 0 && localPosition[1] < 1)) {
         EffectTransform.transformPoint(drawable, localPosition, localPosition);
     } */
@@ -57,7 +61,7 @@ class Drawable {
 
         this.transformMatrix = matrix.mat2d.create();
 
-        this._effects = [];
+        this._effects = {};
 
         const numEffects = EffectManager.EFFECTS.length;
         for (let index = 0; index < numEffects; ++index) {
@@ -272,8 +276,8 @@ class Drawable {
             const center0 = skinCenter[0];
             const center1 = skinCenter[1];
             const rotationCenter = this._rotationCenter;
-            rotationCenter[0] = Math.round(center0) * sizeRatio;
-            rotationCenter[1] = Math.round(center1) * sizeRatio;
+            rotationCenter[0] = center0 * sizeRatio;
+            rotationCenter[1] = center1 * sizeRatio;
 
             this._rotationCenterDirty = false;
         }
@@ -299,7 +303,7 @@ class Drawable {
 
         matrix.mat2d.identity(transformMatrix);
 
-        matrix.mat2d.set(transformMatrix, 1, 0, 0, 1, Math.round(-center0), Math.round(-center1));
+        matrix.mat2d.set(transformMatrix, 1, 0, 0, 1, -center0, -center1);
 
         matrix.mat2d.multiply(transformMatrix, this._scaleMatrix, transformMatrix);
         matrix.mat2d.multiply(transformMatrix, this._rotationMatrix, transformMatrix);

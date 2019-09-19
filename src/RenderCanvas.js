@@ -1509,7 +1509,7 @@ class RenderCanvas extends EventEmitter {
 
                     // Ghost effect
                     if ((effectBits & EffectManager.EFFECT_INFO.ghost.mask) !== 0) {
-                        ctx.globalAlpha = drawable._effects.color;
+                        ctx.globalAlpha = drawable._effects.ghost;
                     }
 
                     // Color effect
@@ -1585,14 +1585,14 @@ class RenderCanvas extends EventEmitter {
         // *Not* Scratch Space-- +y is bottom
         // Loop over all rows of pixels, starting at the top
         for (let y = 0; y < height; y++) {
-            _pixelPos[1] = y / height;
+            _pixelPos[1] = (y + 0.5) / height;
 
             // We start at the leftmost point, then go rightwards until we hit a point
             let x = 0;
             for (; x < width; x++) {
-                _pixelPos[0] = x / width;
+                _pixelPos[0] = (x + 0.5) / width;
                 if (drawable.skin.isTouchingLinear(_pixelPos)) {
-                    currentPoint = [x, y];
+                    currentPoint = [x + 0.5, y + 0.5];
                     break;
                 }
             }
@@ -1627,9 +1627,9 @@ class RenderCanvas extends EventEmitter {
 
             // Now we repeat the process for the right side, looking leftwards for a pixel.
             for (x = width - 1; x >= 0; x--) {
-                _pixelPos[0] = x / width;
+                _pixelPos[0] = (x + 0.5) / width;
                 if (drawable.skin.isTouchingLinear(_pixelPos)) {
-                    currentPoint = [x, y];
+                    currentPoint = [x + 0.5, y + 0.5];
                     break;
                 }
             }
