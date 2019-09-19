@@ -80,21 +80,27 @@ class SVGSkin extends Skin {
      * @fires Skin.event:WasAltered
      */
     setSVG (svgData, rotationCenter) {
-        this._svgRenderer.fromString(svgData, 1, () => {
+        this._svgRenderer.loadString(svgData);
+
+        // Size must be updated synchronously because the VM sets the costume's
+        // `size` immediately after calling this.
+        this.size = this._svgRenderer.size;
+        this._viewOffset = this._svgRenderer.viewOffset;
+        // Reset rawRotationCenter when we update viewOffset. The rotation
+        // center used to render will be updated later.
+        this._rawRotationCenter = [NaN, NaN];
+
+        this._svgRenderer._draw(svgData, 1, () => {
             this._texture.src = `data:image/svg+xml;utf8,${encodeURIComponent(this._svgRenderer.toString(true))}`;
 
             this._texture.onload = () => {
                 this._silhouette.update(this._texture);
 
                 if (typeof rotationCenter === 'undefined') rotationCenter = this.calculateRotationCenter();
-                this.size = this._svgRenderer.size;
-                this._viewOffset = this._svgRenderer.viewOffset;
-                // Reset rawRotationCenter when we update viewOffset.
-                this._rawRotationCenter = [NaN, NaN];
                 this.setRotationCenter(rotationCenter[0], rotationCenter[1]);
+
                 this.emit(Skin.Events.WasAltered);
             };
-            
         });
     }
 
