@@ -240,7 +240,7 @@ class Drawable {
             this._effectBits &= ~effectInfo.mask;
         }
         const converter = effectInfo.converter;
-        this._uniforms[effectInfo.uniformName] = converter(rawValue);
+        this._effects[effectInfo.effectName] = converter(rawValue);
         if (effectInfo.shapeChanges) {
             this.setConvexHullDirty();
         }
