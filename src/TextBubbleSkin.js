@@ -49,7 +49,7 @@ class TextBubbleSkin extends Skin {
         /** @type {Array<string>} */
         this._lines = [];
 
-        this._textSize = {width: 0, height: 0};
+        /** @type {object} */
         this._textAreaSize = {width: 0, height: 0};
 
         /** @type {string} */
@@ -128,17 +128,14 @@ class TextBubbleSkin extends Skin {
         this._lines = this.textWrapper.wrapText(BubbleStyle.MAX_LINE_WIDTH, this._text);
 
         // Measure width of longest line to avoid extra-wide bubbles
-        let longestLine = 0;
+        let longestLineWidth = 0;
         for (const line of this._lines) {
-            longestLine = Math.max(longestLine, this.measurementProvider.measureText(line));
+            longestLineWidth = Math.max(longestLineWidth, this.measurementProvider.measureText(line));
         }
 
-        this._textSize.width = longestLine;
-        this._textSize.height = BubbleStyle.LINE_HEIGHT * this._lines.length;
-
         // Calculate the canvas-space sizes of the padded text area and full text bubble
-        const paddedWidth = Math.max(this._textSize.width, BubbleStyle.MIN_WIDTH) + (BubbleStyle.PADDING * 2);
-        const paddedHeight = this._textSize.height + (BubbleStyle.PADDING * 2);
+        const paddedWidth = Math.max(longestLineWidth, BubbleStyle.MIN_WIDTH) + (BubbleStyle.PADDING * 2);
+        const paddedHeight = (BubbleStyle.LINE_HEIGHT * this._lines.length) + (BubbleStyle.PADDING * 2);
 
         this._textAreaSize.width = paddedWidth;
         this._textAreaSize.height = paddedHeight;
@@ -258,7 +255,6 @@ class TextBubbleSkin extends Skin {
 
         // If we already rendered the text bubble at this scale, we can skip re-rendering it.
         if (this._textureDirty || this._renderedScale !== requestedScale) {
-            
             this._renderTextBubble(requestedScale);
             this._textureDirty = false;
             this.emit(Skin.Events.WasAltered);
