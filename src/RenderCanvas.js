@@ -356,6 +356,7 @@ class RenderCanvas extends EventEmitter {
         }
 
         const newSkin = new SVGSkin(skinId, this);
+        newSkin.addListener(Skin.Events.WasAltered, this._skinWasAltered.bind(this, newSkin));
         newSkin.setSVG(svgData, rotationCenter);
         this._reskin(skinId, newSkin);
     }
@@ -375,6 +376,7 @@ class RenderCanvas extends EventEmitter {
         }
 
         const newSkin = new BitmapSkin(skinId, this);
+        newSkin.addListener(Skin.Events.WasAltered, this._skinWasAltered.bind(this, newSkin));
         newSkin.setBitmap(imgData, bitmapResolution, rotationCenter);
         this._reskin(skinId, newSkin);
     }
@@ -387,11 +389,11 @@ class RenderCanvas extends EventEmitter {
         for (const drawable of this._allDrawables) {
             if (drawable && drawable.skin === oldSkin) {
                 drawable.skin = newSkin;
-                drawable.setConvexHullDirty();
-                drawable.setTransformDirty();
             }
         }
         oldSkin.dispose();
+
+        oldSkin.removeAllListeners(Skin.Events.WasAltered);
     }
 
     /**
