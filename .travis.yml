@@ -25,15 +25,17 @@ jobs:
     - stage: deploy
       node_js: node
       script: npm run build
+      if: branch = release
       before_deploy:
-      - VPKG=$($(npm bin)/json -f package.json version)
-      - export VERSION=${VPKG}-prerelease.$(date date +%Y-%m-%dT%H:%MZ --utc)
+      - VPKG=$("$(npm bin)/json" -f package.json version)
+      - export VERSION=${VPKG}-prerelease.$(date +%Y-%m-%dT%H-%MZ --utc)
       - npm --no-git-tag-version version $VERSION
       - git config --global user.email "$(git log --pretty=format:'%ae' -n1)"
       - git config --global user.name "$(git log --pretty=format:'%an' -n1)"
       deploy:
         provider: npm
         skip_cleanup: true
-        if: branch = release
         email: $NPM_EMAIL
         api_key: $NPM_TOKEN
+        on:
+          branch: release
