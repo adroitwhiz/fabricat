@@ -19,7 +19,7 @@ class SVGSkin extends Skin {
         this._svgRenderer = new SvgRenderer();
 
         /** @type {HTMLImageElement} */
-        this._texture = document.createElement('img');
+        this._texture = null;
 
         /**
          * The natural size, in Scratch units, of this skin.
@@ -80,7 +80,16 @@ class SVGSkin extends Skin {
      * @fires Skin.event:WasAltered
      */
     setSVG (svgData, rotationCenter) {
-        this._svgRenderer.loadString(svgData);
+        this._svgRenderer.loadSVG(svgData, false, () => {
+            this._texture = this._svgRenderer._cachedImage;
+
+            this._silhouette.update(this._texture);
+
+            if (typeof rotationCenter === 'undefined') rotationCenter = this.calculateRotationCenter();
+            this.setRotationCenter(rotationCenter[0], rotationCenter[1]);
+
+            this.emit(Skin.Events.WasAltered);
+        });
 
         // Size must be updated synchronously because the VM sets the costume's
         // `size` immediately after calling this.
@@ -89,19 +98,6 @@ class SVGSkin extends Skin {
         // Reset rawRotationCenter when we update viewOffset. The rotation
         // center used to render will be updated later.
         this._rawRotationCenter = [NaN, NaN];
-
-        this._svgRenderer._draw(1, () => {
-            this._texture.src = `data:image/svg+xml;utf8,${encodeURIComponent(this._svgRenderer.toString(true))}`;
-
-            this._texture.onload = () => {
-                this._silhouette.update(this._texture);
-
-                if (typeof rotationCenter === 'undefined') rotationCenter = this.calculateRotationCenter();
-                this.setRotationCenter(rotationCenter[0], rotationCenter[1]);
-
-                this.emit(Skin.Events.WasAltered);
-            };
-        });
     }
 
 }
