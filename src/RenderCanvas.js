@@ -1008,7 +1008,7 @@ class RenderCanvas extends EventEmitter {
 
         const corner = matrix.vec2.fromValues(-bounds.left, bounds.top);
         matrix.vec2.transformMat2d(corner, corner, this._inverseProjection);
-        
+
         const translated = matrix.mat2d.create();
         matrix.mat2d.translate(translated, this._projection, corner);
 
@@ -1323,7 +1323,25 @@ class RenderCanvas extends EventEmitter {
         if ('rotationCenter' in properties) {
             this.updateDrawableRotationCenter(drawableID, properties.rotationCenter);
         }
-        drawable.updateProperties(properties);
+        if ('position' in properties) {
+            this.updateDrawablePosition(drawableID, properties.position);
+        }
+        if ('direction' in properties) {
+            this.updateDrawableDirection(drawableID, properties.direction);
+        }
+        if ('scale' in properties) {
+            this.updateDrawableScale(drawableID, properties.scale);
+        }
+        if ('visible' in properties) {
+            this.updateDrawableVisible(drawableID, properties.visible);
+        }
+        const numEffects = EffectManager.EFFECTS.length;
+        for (let index = 0; index < numEffects; ++index) {
+            const effectName = EffectManager.EFFECTS[index];
+            if (effectName in properties) {
+                this.updateDrawableEffect(drawableID, effectName, properties[effectName]);
+            }
+        }
     }
 
     /**
@@ -1431,7 +1449,7 @@ class RenderCanvas extends EventEmitter {
      * @private
      */
     onNativeSizeChanged () {
-        
+
     }
 
     /**
@@ -1596,7 +1614,7 @@ class RenderCanvas extends EventEmitter {
                 } else {
                     // leftHull.pop();
                     --leftEndPointIndex;
-                    
+
                 }
             }
 

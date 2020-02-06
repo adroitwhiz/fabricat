@@ -98,7 +98,7 @@ class Drawable {
         ];
         this._aabbDirty = true;
         this._aabb = new Rectangle();
-        
+
         /** @todo move convex hull functionality, maybe bounds functionality overall, to Skin classes */
         this._convexHullPoints = null;
         this._transformedHullPoints = null;
@@ -247,33 +247,6 @@ class Drawable {
     }
 
     /**
-     * Update the position, direction, scale, or effect properties of this Drawable.
-     * @deprecated Use specific update* methods instead.
-     * @param {object.<string,*>} properties The new property values to set.
-     */
-    updateProperties (properties) {
-        if ('position' in properties) {
-            this.updatePosition(properties.position);
-        }
-        if ('direction' in properties) {
-            this.updateDirection(properties.direction);
-        }
-        if ('scale' in properties) {
-            this.updateScale(properties.scale);
-        }
-        if ('visible' in properties) {
-            this.updateVisible(properties.visible);
-        }
-        const numEffects = EffectManager.EFFECTS.length;
-        for (let index = 0; index < numEffects; ++index) {
-            const effectName = EffectManager.EFFECTS[index];
-            if (effectName in properties) {
-                this.updateEffect(effectName, properties[effectName]);
-            }
-        }
-    }
-
-    /**
      * Calculate the transform to use when rendering this Drawable.
      * @private
      */
@@ -331,7 +304,7 @@ class Drawable {
         matrix.mat2d.multiply(transformMatrix, this._scaleMatrix, transformMatrix);
         matrix.mat2d.multiply(transformMatrix, this._rotationMatrix, transformMatrix);
         matrix.mat2d.multiply(transformMatrix, this._translationMatrix, transformMatrix);
-        
+
 
         this._transformDirty = false;
     }
