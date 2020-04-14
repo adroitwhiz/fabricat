@@ -77,7 +77,6 @@ class Drawable {
         this._scale = matrix.vec2.fromValues(100, 100);
         this._direction = 90;
         this._transformDirty = true;
-        this._translationMatrix = matrix.mat2d.create();
         this._scaleMatrix = matrix.mat2d.create();
         this._rotationMatrix = matrix.mat2d.create();
         this._rotationTransformDirty = true;
@@ -258,7 +257,7 @@ class Drawable {
      */
     _calculateTransform () {
         if (this._rotationTransformDirty) {
-            const rotation = (90 - this._direction) * Math.PI / 180;
+            const rotation = (this._direction - 90) * Math.PI / 180;
 
             const c = Math.cos(rotation);
             const s = Math.sin(rotation);
@@ -293,24 +292,17 @@ class Drawable {
             this._skinScaleDirty = false;
         }
 
-        const position0 = this._position[0];
-        const position1 = this._position[1];
         const rotationCenter = this._rotationCenter;
         const center0 = rotationCenter[0];
         const center1 = rotationCenter[1];
 
-        this._translationMatrix = matrix.mat2d.fromValues(1, 0, 0, 1, position0, position1);
-
         const transformMatrix = this.transformMatrix;
 
         matrix.mat2d.identity(transformMatrix);
-
-        matrix.mat2d.set(transformMatrix, 1, 0, 0, 1, -center0, -center1);
-
-        matrix.mat2d.multiply(transformMatrix, this._scaleMatrix, transformMatrix);
-        matrix.mat2d.multiply(transformMatrix, this._rotationMatrix, transformMatrix);
-        matrix.mat2d.multiply(transformMatrix, this._translationMatrix, transformMatrix);
-
+        matrix.mat2d.translate(transformMatrix, transformMatrix, this._position);
+        matrix.mat2d.multiply(transformMatrix, transformMatrix, this._rotationMatrix);
+        matrix.mat2d.multiply(transformMatrix, transformMatrix, this._scaleMatrix);
+        matrix.mat2d.translate(transformMatrix, transformMatrix, [-center0, -center1]);
 
         this._transformDirty = false;
     }
