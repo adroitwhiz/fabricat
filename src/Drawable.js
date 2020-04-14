@@ -77,7 +77,6 @@ class Drawable {
         this._scale = matrix.vec2.fromValues(100, 100);
         this._direction = 90;
         this._transformDirty = true;
-        this._scaleMatrix = matrix.mat2d.create();
         this._rotationMatrix = matrix.mat2d.create();
         this._rotationTransformDirty = true;
         this._rotationCenter = matrix.vec2.create();
@@ -257,7 +256,7 @@ class Drawable {
      */
     _calculateTransform () {
         if (this._rotationTransformDirty) {
-            const rotation = (this._direction - 90) * Math.PI / 180;
+            const rotation = (90 - this._direction) * Math.PI / 180;
 
             const c = Math.cos(rotation);
             const s = Math.sin(rotation);
@@ -286,23 +285,28 @@ class Drawable {
         if (this._skinScaleDirty && this.skin !== null) {
             const sizeRatio = this.skin.sizeRatio;
 
-            this._scaleMatrix[0] = (this._scale[0] * 0.01) / sizeRatio;
-            this._scaleMatrix[3] = (this._scale[1] * -0.01) / sizeRatio;
+            this._skinScale[0] = (this._scale[0] * 0.01) / sizeRatio;
+            this._skinScale[1] = (this._scale[1] * -0.01) / sizeRatio;
 
             this._skinScaleDirty = false;
         }
 
+        const position = this._position;
         const rotationCenter = this._rotationCenter;
         const center0 = rotationCenter[0];
         const center1 = rotationCenter[1];
+        const scale = this._skinScale;
+        const scale0 = scale[0];
+        const scale1 = scale[1];
 
         const transformMatrix = this.transformMatrix;
 
-        matrix.mat2d.identity(transformMatrix);
-        matrix.mat2d.translate(transformMatrix, transformMatrix, this._position);
-        matrix.mat2d.multiply(transformMatrix, transformMatrix, this._rotationMatrix);
-        matrix.mat2d.multiply(transformMatrix, transformMatrix, this._scaleMatrix);
-        matrix.mat2d.translate(transformMatrix, transformMatrix, [-center0, -center1]);
+        transformMatrix[0] = this._rotationMatrix[0] * scale0;
+        transformMatrix[1] = this._rotationMatrix[1] * scale0;
+        transformMatrix[2] = this._rotationMatrix[2] * scale1;
+        transformMatrix[3] = this._rotationMatrix[3] * scale1;
+        transformMatrix[4] = (transformMatrix[0] * -center0) + (transformMatrix[2] * -center1) + position[0];
+        transformMatrix[5] = (transformMatrix[1] * -center0) + (transformMatrix[3] * -center1) + position[1];
 
         this._transformDirty = false;
     }
