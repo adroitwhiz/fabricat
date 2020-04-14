@@ -28,8 +28,8 @@ const getLocalPosition = (drawable, vec) => {
     const localPosition = __isTouchingPosition;
     const inverse = drawable._inverseMatrix;
 
-    __isTouchingVec[0] = vec[0] - 0.5;
-    __isTouchingVec[1] = vec[1] + 0.5;
+    __isTouchingVec[0] = vec[0] + 0.5;
+    __isTouchingVec[1] = vec[1] - 0.5;
 
     matrix.vec2.transformMat2d(localPosition, __isTouchingVec, inverse);
 
@@ -39,10 +39,12 @@ const getLocalPosition = (drawable, vec) => {
     localPosition[1] /= (skinSize[1] * skinRatio);
 
     // Apply texture effect transform if the localPosition is within the drawable's space.
-    // Disabled for now because distortion effects aren't implemented.
-    /* if ((localPosition[0] >= 0 && localPosition[0] < 1) && (localPosition[1] >= 0 && localPosition[1] < 1)) {
+    if (drawable.enabledEffects !== 0 &&
+        (localPosition[0] >= 0 && localPosition[0] < 1) &&
+        (localPosition[1] >= 0 && localPosition[1] < 1)
+    ) {
         EffectTransform.transformPoint(drawable, localPosition, localPosition);
-    } */
+    }
     return localPosition;
 };
 
