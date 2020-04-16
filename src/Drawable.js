@@ -39,12 +39,13 @@ const getLocalPosition = (drawable, vec) => {
     localPosition[1] /= (skinSize[1] * skinRatio);
 
     // Apply texture effect transform if the localPosition is within the drawable's space.
-    if (drawable.enabledEffects !== 0 &&
+    // Disable this for now because distortion effects are not implemented
+    /* if (drawable.enabledEffects !== 0 &&
         (localPosition[0] >= 0 && localPosition[0] < 1) &&
         (localPosition[1] >= 0 && localPosition[1] < 1)
     ) {
         EffectTransform.transformPoint(drawable, localPosition, localPosition);
-    }
+    }*/
     return localPosition;
 };
 
