@@ -4,6 +4,7 @@ const EffectTransform = require('./EffectTransform');
 const Rectangle = require('./Rectangle');
 const RenderConstants = require('./RenderConstants');
 const EffectManager = require('./EffectManager');
+const log = require('./util/log');
 
 /**
  * An internal workspace for calculating texture locations from world vectors
@@ -87,7 +88,11 @@ class Drawable {
         this._inverseMatrix = matrix.mat2d.create();
         this._inverseTransformDirty = true;
         this._visible = true;
-        this._effectBits = 0;
+
+        /** A bitmask identifying which effects are currently in use.
+         * @readonly
+         * @type {int} */
+        this.enabledEffects = 0;
 
         this._aabbPoints = [
             matrix.vec2.create(),
@@ -109,7 +114,16 @@ class Drawable {
         this._transformedHullPoints = null;
         this._convexHullDirty = true;
         this._convexHullMatrix = matrix.mat2d.create();
-        this._preciseBounds = new Rectangle();
+
+        // The precise bounding box will be from the transformed convex hull points,
+        // so initialize the array of transformed hull points in setConvexHullPoints.
+        // Initializing it once per convex hull recalculation avoids unnecessary creation of objects.
+        this._transformedHullPoints = null;
+        this._transformedHullDirty = true;
+
+        this._skinWasAltered = this._skinWasAltered.bind(this);
+
+        this.isTouching = this._isTouchingNever;
     }
 
     /**
@@ -127,6 +141,7 @@ class Drawable {
     setTransformDirty () {
         this._transformDirty = true;
         this._inverseTransformDirty = true;
+        this._transformedHullDirty = true;
     }
 
     /**
@@ -158,13 +173,6 @@ class Drawable {
      */
     get scale () {
         return [this._scale[0], this._scale[1]];
-    }
-
-    /**
-     * @returns {int} A bitmask identifying which effects are currently in use.
-     */
-    getEnabledEffects () {
-        return this._effectBits;
     }
 
     getTransform () {
@@ -240,9 +248,9 @@ class Drawable {
     updateEffect (effectName, rawValue) {
         const effectInfo = EffectManager.EFFECT_INFO[effectName];
         if (rawValue) {
-            this._effectBits |= effectInfo.mask;
+            this.enabledEffects |= effectInfo.mask;
         } else {
-            this._effectBits &= ~effectInfo.mask;
+            this.enabledEffects &= ~effectInfo.mask;
         }
         const converter = effectInfo.converter;
         this._effects[effectInfo.effectName] = converter(rawValue);
@@ -342,29 +350,45 @@ class Drawable {
      */
     setConvexHullPoints (points) {
         this._convexHullPoints = points;
+        this._convexHullDirty = false;
+
+        // Re-create the "transformed hull points" array.
+        // We only do this when the hull points change to avoid unnecessary allocations and GC.
         this._transformedHullPoints = [];
         for (let i = 0; i < points.length; i++) {
             this._transformedHullPoints.push(matrix.vec2.create());
         }
-        this._convexHullDirty = false;
+        this._transformedHullDirty = true;
     }
 
     /**
+     * @function
+     * @name isTouching
      * Check if the world position touches the skin.
+     * The caller is responsible for ensuring this drawable's inverse matrix & its skin's silhouette are up-to-date.
+     * @see updateCPURenderAttributes
      * @param {matrix.vec2} vec World coordinate vector.
      * @return {boolean} True if the world position touches the skin.
      */
-    isTouching (vec) {
-        if (!this.skin) {
-            return false;
-        }
 
-        const localPosition = getLocalPosition(this, vec);
+    // `updateCPURenderAttributes` sets this Drawable instance's `isTouching` method
+    // to one of the following three functions:
+    // If this drawable has no skin, set it to `_isTouchingNever`.
+    // Otherwise, if this drawable uses nearest-neighbor scaling at its current scale, set it to `_isTouchingNearest`.
+    // Otherwise, set it to `_isTouchingLinear`.
+    // This allows several checks to be moved from the `isTouching` function to `updateCPURenderAttributes`.
 
-        if (this.skin.isRaster) {
-            return this.skin.isTouchingNearest(localPosition);
-        }
-        return this.skin.isTouchingLinear(localPosition);
+    // eslint-disable-next-line no-unused-vars
+    _isTouchingNever (vec) {
+        return false;
+    }
+
+    _isTouchingNearest (vec) {
+        return this.skin.isTouchingNearest(getLocalPosition(this, vec));
+    }
+
+    _isTouchingLinear (vec) {
+        return this.skin.isTouchingLinear(getLocalPosition(this, vec));
     }
 
     /**
@@ -454,7 +478,6 @@ class Drawable {
      * @return {!Rectangle} Bounds for the Drawable.
      */
     getFastBounds () {
-        this.updateMatrix();
         if (!this.needsConvexHullPoints()) {
             return this.getBounds();
         }
@@ -469,6 +492,10 @@ class Drawable {
      * @private
      */
     _getTransformedHullPoints () {
+        if (!this._transformedHullDirty) {
+            return this._transformedHullPoints;
+        }
+
         matrix.mat2d.scale(
             this._convexHullMatrix,
             this.transformMatrix,
@@ -482,6 +509,9 @@ class Drawable {
                 this._convexHullMatrix
             );
         }
+
+        this._transformedHullDirty = false;
+
         return this._transformedHullPoints;
     }
 
@@ -498,6 +528,27 @@ class Drawable {
             const inverse = this._inverseMatrix;
             matrix.mat2d.invert(inverse, this.transformMatrix);
             this._inverseTransformDirty = false;
+        }
+    }
+
+    /**
+     * Update everything necessary to render this drawable on the CPU.
+     */
+    updateCPURenderAttributes () {
+        this.updateMatrix();
+        // CPU rendering always occurs at the "native" size, so no need to scale up this._scale
+        if (this.skin) {
+            this.skin.updateSilhouette(this._scale);
+
+            if (this.skin.useNearest(this._scale, this)) {
+                this.isTouching = this._isTouchingNearest;
+            } else {
+                this.isTouching = this._isTouchingLinear;
+            }
+        } else {
+            log.warn(`Could not find skin for drawable with id: ${this._id}`);
+
+            this.isTouching = this._isTouchingNever;
         }
     }
 
@@ -546,25 +597,34 @@ class Drawable {
 
     /**
      * Sample a color from a drawable's texture.
+     * The caller is responsible for ensuring this drawable's inverse matrix & its skin's silhouette are up-to-date.
+     * @see updateCPURenderAttributes
      * @param {matrix.vec2} vec The scratch space [x,y] vector
      * @param {Drawable} drawable The drawable to sample the texture from
      * @param {Uint8ClampedArray} dst The "color4b" representation of the texture at point.
+     * @param {number} [effectMask] A bitmask for which effects to use. Optional.
      * @returns {Uint8ClampedArray} The dst object filled with the color4b
      */
-    static sampleColor4b (vec, drawable, dst) {
+    static sampleColor4b (vec, drawable, dst, effectMask) {
         const localPosition = getLocalPosition(drawable, vec);
 
         if (localPosition[0] < 0 || localPosition[1] < 0 ||
             localPosition[0] > 1 || localPosition[1] > 1) {
+            dst[0] = 0;
+            dst[1] = 0;
+            dst[2] = 0;
             dst[3] = 0;
             return dst;
         }
+
         const textColor =
         // commenting out to only use nearest for now
-        // drawable.skin.isRaster ?
+        // drawable.skin.useNearest(drawable._scale, drawable) ?
              drawable.skin._silhouette.colorAtNearest(localPosition, dst);
         // : drawable.skin._silhouette.colorAtLinear(localPosition, dst);
-        return EffectTransform.transformColor(drawable, textColor, textColor);
+
+        if (drawable.enabledEffects === 0) return textColor;
+        return EffectTransform.transformColor(drawable, textColor, effectMask);
     }
 }
 

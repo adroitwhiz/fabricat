@@ -1,5 +1,6 @@
 const Skin = require('./Skin');
 const SvgRenderer = require('scratch-svg-renderer').SVGRenderer;
+const EffectManager = require('./EffectManager');
 
 class SVGSkin extends Skin {
     /**
@@ -37,7 +38,7 @@ class SVGSkin extends Skin {
          * The rotation center before offset by _viewOffset.
          * @type {Array<number>}
          */
-        this._rawRotationCenter = [NaN, NaN];
+        this._rawRotationCenter = [0, 0];
     }
 
     /**
@@ -50,17 +51,33 @@ class SVGSkin extends Skin {
         super.dispose();
     }
 
-    /**
-     * Set the origin, in object space, about which this Skin should rotate.
-     * @param {number} x - The x coordinate of the new rotation center.
-     * @param {number} y - The y coordinate of the new rotation center.
-     */
-    setRotationCenter (x, y) {
-        if (x !== this._rawRotationCenter[0] || y !== this._rawRotationCenter[1]) {
-            this._rawRotationCenter[0] = x;
-            this._rawRotationCenter[1] = y;
-            super.setRotationCenter(x - this._viewOffset[0], y - this._viewOffset[1]);
+    useNearest (scale, drawable) {
+        // If the effect bits for mosaic, pixelate, whirl, or fisheye are set, use linear
+        if ((drawable.enabledEffects & (
+            EffectManager.EFFECT_INFO.fisheye.mask |
+            EffectManager.EFFECT_INFO.whirl.mask |
+            EffectManager.EFFECT_INFO.pixelate.mask |
+            EffectManager.EFFECT_INFO.mosaic.mask
+        )) !== 0) {
+            return false;
         }
+
+        // We can't use nearest neighbor unless we are a multiple of 90 rotation
+        if (drawable._direction % 90 !== 0) {
+            return false;
+        }
+
+        // Because SVG skins' bounding boxes are currently not pixel-aligned, the idea here is to hide blurriness
+        // by using nearest-neighbor scaling if one screen-space pixel is "close enough" to one texture pixel.
+        // If the scale of the skin is very close to 100 (0.99999 variance is okay I guess)
+        // TODO: Make this check more precise. We should use nearest if there's less than one pixel's difference
+        // between the screen-space and texture-space sizes of the skin. Mipmaps make this harder because there are
+        // multiple textures (and hence multiple texture spaces) and we need to know which one to choose.
+        if (Math.abs(scale[0]) > 99 && Math.abs(scale[0]) < 101 &&
+            Math.abs(scale[1]) > 99 && Math.abs(scale[1]) < 101) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -75,8 +92,7 @@ class SVGSkin extends Skin {
     /**
      * Set the contents of this skin to a snapshot of the provided SVG data.
      * @param {string} svgData - new SVG to use.
-     * @param {Array<number>} [rotationCenter] - Optional rotation center for the SVG. If not supplied, it will be
-     * calculated from the bounding box
+     * @param {Array<number>} [rotationCenter] - Optional rotation center for the SVG.
      * @fires Skin.event:WasAltered
      */
     setSVG (svgData, rotationCenter) {
@@ -86,7 +102,8 @@ class SVGSkin extends Skin {
             this._silhouette.update(this._texture);
 
             if (typeof rotationCenter === 'undefined') rotationCenter = this.calculateRotationCenter();
-            this.setRotationCenter(rotationCenter[0], rotationCenter[1]);
+            this._rotationCenter[0] = rotationCenter[0] - this._viewOffset[0];
+            this._rotationCenter[1] = rotationCenter[1] - this._viewOffset[1];
 
             this.emit(Skin.Events.WasAltered);
         });
@@ -97,7 +114,7 @@ class SVGSkin extends Skin {
         this._viewOffset = this._svgRenderer.viewOffset;
         // Reset rawRotationCenter when we update viewOffset. The rotation
         // center used to render will be updated later.
-        this._rawRotationCenter = [NaN, NaN];
+        this._rawRotationCenter = [0, 0];
     }
 
 }

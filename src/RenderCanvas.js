@@ -160,6 +160,10 @@ class RenderCanvas extends EventEmitter {
         /** @type {Array.<snapshotCallback>} */
         this._snapshotCallbacks = [];
 
+        /** @type {Uint8ClampedArray} */
+        // Don't set this directly-- use setBackgroundColor
+        this._backgroundColor3b = new Uint8ClampedArray(3);
+
         this.on(RenderConstants.Events.NativeSizeChanged, this.onNativeSizeChanged);
 
         this.setBackgroundColor(1, 1, 1);
@@ -201,6 +205,8 @@ class RenderCanvas extends EventEmitter {
         if (canvas.width !== newWidth || canvas.height !== newHeight) {
             canvas.width = newWidth;
             canvas.height = newHeight;
+            // Resizing the canvas causes it to be cleared, so redraw it.
+            this.draw();
         }
 
         this._scaleMatrix[0] = (pixelsWide * pixelRatio) / this._nativeSize[0];
@@ -215,7 +221,10 @@ class RenderCanvas extends EventEmitter {
      * @param {number} blue The blue component for the background.
      */
     setBackgroundColor (red, green, blue) {
-        this._backgroundColor = [red, green, blue, 1];
+        this._backgroundColor3b[0] = red * 255;
+        this._backgroundColor3b[1] = green * 255;
+        this._backgroundColor3b[2] = blue * 255;
+
     }
 
     /**
@@ -431,7 +440,7 @@ class RenderCanvas extends EventEmitter {
      * @returns {int} The ID of the new Drawable.
      */
     createDrawable (group) {
-        if (!group || !this._layerGroups.hasOwnProperty(group)) {
+        if (!group || !Object.prototype.hasOwnProperty.call(this._layerGroups, group)) {
             log.warn('Cannot create a drawable without a known layer group');
             return;
         }
@@ -501,7 +510,7 @@ class RenderCanvas extends EventEmitter {
      * @param {string} group Group name that the drawable belongs to
      */
     destroyDrawable (drawableID, group) {
-        if (!group || !this._layerGroups.hasOwnProperty(group)) {
+        if (!group || !Object.prototype.hasOwnProperty.call(this._layerGroups, group)) {
             log.warn('Cannot destroy drawable without known layer group.');
             return;
         }
@@ -555,7 +564,7 @@ class RenderCanvas extends EventEmitter {
      * @return {?number} New order if changed, or null.
      */
     setDrawableOrder (drawableID, order, group, optIsRelative, optMin) {
-        if (!group || !this._layerGroups.hasOwnProperty(group)) {
+        if (!group || !Object.prototype.hasOwnProperty.call(this._layerGroups, group)) {
             log.warn('Cannot set the order of a drawable without a known layer group.');
             return;
         }
@@ -732,11 +741,21 @@ class RenderCanvas extends EventEmitter {
      */
     isTouchingColor (drawableID, color3b, mask3b) {
         const candidates = this._candidatesTouching(drawableID, this._visibleDrawList);
-        if (candidates.length === 0) {
-            return false;
-        }
 
-        const bounds = this._candidatesBounds(candidates);
+        let bounds;
+        if (colorMatches(color3b, this._backgroundColor3b, 0)) {
+            // If the color we're checking for is the background color, don't confine the check to
+            // candidate drawables' bounds--since the background spans the entire stage, we must check
+            // everything that lies inside the drawable.
+            bounds = this._touchingBounds(drawableID);
+            // e.g. empty costume, or off the stage
+            if (bounds === null) return false;
+        } else if (candidates.length === 0) {
+            // If not checking for the background color, we can return early if there are no candidate drawables.
+            return false;
+        } else {
+            bounds = this._candidatesBounds(candidates);
+        }
 
         const debugCanvasContext = this._debugCanvas && this._debugCanvas.getContext('2d');
         if (debugCanvasContext) {
@@ -749,8 +768,10 @@ class RenderCanvas extends EventEmitter {
         const color = __touchingColor;
         const hasMask = Boolean(mask3b);
 
-        this._updateSilhouettesForCandidates(candidates);
-        drawable.skin.updateSilhouette();
+        drawable.updateCPURenderAttributes();
+
+        // Masked drawable ignores ghost effect
+        const effectMask = ~EffectManager.EFFECT_INFO.ghost.mask;
 
         // Scratch Space - +y is top
         for (let y = bounds.bottom; y <= bounds.top; y++) {
@@ -759,7 +780,7 @@ class RenderCanvas extends EventEmitter {
                 point[0] = x;
                 // if we use a mask, check our sample color...
                 if (hasMask ?
-                    maskMatches(Drawable.sampleColor4b(point, drawable, color), mask3b) :
+                    maskMatches(Drawable.sampleColor4b(point, drawable, color, effectMask), mask3b) :
                     drawable.isTouching(point)) {
                     RenderCanvas.sampleColor3b(point, candidates, color);
                     if (debugCanvasContext) {
@@ -795,11 +816,8 @@ class RenderCanvas extends EventEmitter {
         // Get the union of all the candidates intersections.
         const bounds = this._candidatesBounds(candidates);
 
-        // Ensure the candidates' Silhouettes are up-to-date.
-        this._updateSilhouettesForCandidates(candidates);
-
         const drawable = this._allDrawables[drawableID];
-        drawable.skin.updateSilhouette();
+        drawable.updateCPURenderAttributes();
 
         const point = __isTouchingDrawablesPoint;
 
@@ -877,12 +895,7 @@ class RenderCanvas extends EventEmitter {
         const bounds = this.clientSpaceToScratchBounds(centerX, centerY, touchWidth, touchHeight);
         const worldPos = matrix.vec2.create();
 
-        drawable.updateMatrix();
-        if (drawable.skin) {
-            drawable.skin.updateSilhouette();
-        } else {
-            log.warn(`Could not find skin for drawable with id: ${drawableID}`);
-        }
+        drawable.updateCPURenderAttributes();
 
         for (worldPos[1] = bounds.bottom; worldPos[1] <= bounds.top; worldPos[1]++) {
             for (worldPos[0] = bounds.left; worldPos[0] <= bounds.right; worldPos[0]++) {
@@ -909,27 +922,26 @@ class RenderCanvas extends EventEmitter {
      * RenderConstants.ID_NONE if there is no Drawable at that location.
      */
     pick (centerX, centerY, touchWidth, touchHeight, candidateIDs) {
+        const bounds = this.clientSpaceToScratchBounds(centerX, centerY, touchWidth, touchHeight);
+        if (bounds.left === -Infinity || bounds.bottom === -Infinity) {
+            return false;
+        }
+
         candidateIDs = (candidateIDs || this._drawList).filter(id => {
             const drawable = this._allDrawables[id];
             // default pick list ignores visible and ghosted sprites.
             if (drawable.getVisible()) {
-                drawable.updateMatrix();
-                if (drawable.skin) {
-                    drawable.skin.updateSilhouette();
-                } else {
-                    log.warn(`Could not find skin for drawable with id: ${id}`);
-                }
+                const drawableBounds = drawable.getFastBounds();
+                const inRange = bounds.intersects(drawableBounds);
+                if (!inRange) return false;
+
+                drawable.updateCPURenderAttributes();
                 return true;
             }
             return false;
         });
 
         if (candidateIDs.length === 0) {
-            return false;
-        }
-
-        const bounds = this.clientSpaceToScratchBounds(centerX, centerY, touchWidth, touchHeight);
-        if (bounds.left === -Infinity || bounds.bottom === -Infinity) {
             return false;
         }
 
@@ -959,7 +971,7 @@ class RenderCanvas extends EventEmitter {
 
         let hit = RenderConstants.ID_NONE;
         for (const hitID in hits) {
-            if (hits.hasOwnProperty(hitID) && (hits[hitID] > hits[hit])) {
+            if (Object.prototype.hasOwnProperty.call(hits, hitID) && (hits[hitID] > hits[hit])) {
                 hit = hitID;
             }
         }
@@ -968,7 +980,7 @@ class RenderCanvas extends EventEmitter {
     }
 
     /**
-     * @typedef DrawableExtraction
+     * @typedef DrawableExtractionOld
      * @property {Uint8Array} data Raw pixel data for the drawable
      * @property {int} width Drawable bounding box width
      * @property {int} height Drawable bounding box height
@@ -983,7 +995,8 @@ class RenderCanvas extends EventEmitter {
      * @param {int} drawableID The ID of the drawable to get pixel data for
      * @param {int} x The client x coordinate of the picking location.
      * @param {int} y The client y coordinate of the picking location.
-     * @return {?DrawableExtraction} Data about the picked drawable
+     * @return {?DrawableExtractionOld} Data about the picked drawable
+     * @deprecated Use {@link extractDrawableScreenSpace} instead.
      */
     extractDrawable (drawableID, x, y) {
         const drawable = this._allDrawables[drawableID];
@@ -1043,6 +1056,11 @@ class RenderCanvas extends EventEmitter {
             x: pickX,
             y: pickY
         };
+    }
+
+    // TODO
+    extractDrawableScreenSpace () {
+        throw new Error('Not implemented');
     }
 
     /**
@@ -1117,7 +1135,6 @@ class RenderCanvas extends EventEmitter {
         /** @todo remove this once URL-based skin setting is removed. */
         if (!drawable.skin || !drawable.skin.getTexture([100, 100])) return null;
 
-        drawable.updateMatrix();
         const bounds = drawable.getFastBounds();
 
         // Limit queries to the stage size.
@@ -1151,13 +1168,17 @@ class RenderCanvas extends EventEmitter {
             const id = candidateIDs[index];
             if (id !== drawableID) {
                 const drawable = this._allDrawables[id];
+                // Text bubbles aren't considered in "touching" queries
+                if (drawable.skin instanceof TextBubbleSkin) continue;
                 if (drawable.skin && drawable._visible) {
                     // Update the CPU position data
-                    drawable.updateMatrix();
+                    drawable.updateCPURenderAttributes();
                     const candidateBounds = drawable.getFastBounds();
 
-                    // Push bounds out to integers. If a drawable extends out into half a pixel,
-                    // that half-pixel still needs to be tested.
+                    // Push bounds out to integers. If a drawable extends out into half a pixel, that half-pixel still
+                    // needs to be tested. Plus, in some areas we construct another rectangle from the union of these,
+                    // and iterate over its pixels (width * height). Turns out that doesn't work so well when the
+                    // width/height aren't integers.
                     candidateBounds.snapToInt();
 
                     if (bounds.intersects(candidateBounds)) {
@@ -1199,32 +1220,6 @@ class RenderCanvas extends EventEmitter {
         // TODO: https://github.com/LLK/scratch-vm/issues/2288
         if (!drawable) return;
         drawable.skin = this._allSkins[skinId];
-    }
-
-    /**
-     * Update a drawable's skin rotation center.
-     * @param {number} drawableID The drawable's id.
-     * @param {Array.<number>} rotationCenter The rotation center for the skin.
-     */
-    updateDrawableRotationCenter (drawableID, rotationCenter) {
-        const drawable = this._allDrawables[drawableID];
-        // TODO: https://github.com/LLK/scratch-vm/issues/2288
-        if (!drawable) return;
-        drawable.skin.setRotationCenter(rotationCenter[0], rotationCenter[1]);
-    }
-
-    /**
-     * Update a drawable's skin and rotation center together.
-     * @param {number} drawableID The drawable's id.
-     * @param {number} skinId The skin to update to.
-     * @param {Array.<number>} rotationCenter The rotation center for the skin.
-     */
-    updateDrawableSkinIdRotationCenter (drawableID, skinId, rotationCenter) {
-        const drawable = this._allDrawables[drawableID];
-        // TODO: https://github.com/LLK/scratch-vm/issues/2288
-        if (!drawable) return;
-        drawable.skin = this._allSkins[skinId];
-        drawable.skin.setRotationCenter(rotationCenter[0], rotationCenter[1]);
     }
 
     /**
@@ -1319,9 +1314,6 @@ class RenderCanvas extends EventEmitter {
         }
         if ('skinId' in properties) {
             this.updateDrawableSkinId(drawableID, properties.skinId);
-        }
-        if ('rotationCenter' in properties) {
-            this.updateDrawableRotationCenter(drawableID, properties.rotationCenter);
         }
         if ('position' in properties) {
             this.updateDrawablePosition(drawableID, properties.position);
@@ -1498,8 +1490,8 @@ class RenderCanvas extends EventEmitter {
             // If the skin or texture isn't ready yet, skip it.
             if (!drawable.skin || !drawable.skin.getTexture(drawableScale)) continue;
 
-            let effectBits = drawable.getEnabledEffects();
-            effectBits &= opts.hasOwnProperty('effectMask') ? opts.effectMask : effectBits;
+            let effectBits = drawable.enabledEffects;
+            effectBits &= Object.prototype.hasOwnProperty.call(opts, 'effectMask') ? opts.effectMask : effectBits;
 
             const tex = drawable.skin.getTexture(drawableScale);
 
@@ -1546,6 +1538,8 @@ class RenderCanvas extends EventEmitter {
             return [];
         }
 
+        drawable.updateCPURenderAttributes();
+
         /**
          * Return the determinant of two vectors, the vector from A to B and the vector from A to C.
          *
@@ -1568,6 +1562,7 @@ class RenderCanvas extends EventEmitter {
         // The main difference is that instead of sorting the points by x-coordinate, and y-coordinate in case of ties,
         // it goes through them by y-coordinate in the outer loop and x-coordinate in the inner loop.
         // This gives us "left" and "right" hulls, whereas the monotone chain algorithm gives "top" and "bottom" hulls.
+        // Adapted from https://github.com/LLK/scratch-flash/blob/dcbeeb59d44c3be911545dfe54d46a32404f8e69/src/scratch/ScratchCostume.as#L369-L413
 
         const leftHull = [];
         const rightHull = [];
@@ -1579,6 +1574,7 @@ class RenderCanvas extends EventEmitter {
         let rightEndPointIndex = -1;
 
         const _pixelPos = matrix.vec2.create();
+        const _effectPos = matrix.vec2.create();
 
         let currentPoint;
 
@@ -1587,22 +1583,23 @@ class RenderCanvas extends EventEmitter {
         for (let y = 0; y < height; y++) {
             _pixelPos[1] = (y + 0.5) / height;
 
-            // We start at the leftmost point, then go rightwards until we hit a point
+            // We start at the leftmost point, then go rightwards until we hit an opaque pixel
             let x = 0;
             for (; x < width; x++) {
                 _pixelPos[0] = (x + 0.5) / width;
+                // EffectTransform.transformPoint(drawable, _pixelPos, _effectPos);
                 if (drawable.skin.isTouchingLinear(_pixelPos)) {
                     currentPoint = [x + 0.5, y + 0.5];
                     break;
                 }
             }
 
-            // If we managed to loop all the way through, there are no touchable points on this row. Go to the next one
+            // If we managed to loop all the way through, there are no opaque pixels on this row. Go to the next one
             if (x >= width) {
                 continue;
             }
 
-            // Because leftEndPointIndex is initialized to -1, this is skipped for the bottom two rows.
+            // Because leftEndPointIndex is initialized to -1, this is skipped for the first two rows.
             // It runs only when there are enough points in the left hull to make at least one line.
             // If appending the current point to the left hull makes a counter-clockwise turn,
             // we want to append the current point. Otherwise, we decrement the index of the "last" hull point until the
@@ -1614,7 +1611,6 @@ class RenderCanvas extends EventEmitter {
                 } else {
                     // leftHull.pop();
                     --leftEndPointIndex;
-
                 }
             }
 
@@ -1628,6 +1624,7 @@ class RenderCanvas extends EventEmitter {
             // Now we repeat the process for the right side, looking leftwards for a pixel.
             for (x = width - 1; x >= 0; x--) {
                 _pixelPos[0] = (x + 0.5) / width;
+                // EffectTransform.transformPoint(drawable, _pixelPos, _effectPos);
                 if (drawable.skin.isTouchingLinear(_pixelPos)) {
                     currentPoint = [x + 0.5, y + 0.5];
                     break;
@@ -1646,8 +1643,10 @@ class RenderCanvas extends EventEmitter {
             rightHull[++rightEndPointIndex] = currentPoint;
         }
 
-        // Start off "hullPoints" with the left hull points. This is where we get rid of those dangling extra points.
-        const hullPoints = leftHull.slice(0, leftEndPointIndex + 1);
+        // Start off "hullPoints" with the left hull points.
+        const hullPoints = leftHull;
+        // This is where we get rid of those dangling extra points.
+        hullPoints.length = leftEndPointIndex + 1;
         // Add points from the right side in reverse order so all points are ordered clockwise.
         for (let j = rightEndPointIndex; j >= 0; --j) {
             hullPoints.push(rightHull[j]);
@@ -1677,13 +1676,11 @@ class RenderCanvas extends EventEmitter {
             }
             */
             Drawable.sampleColor4b(vec, drawables[index].drawable, __blendColor);
-            // if we are fully transparent, go to the next one "down"
-            const sampleAlpha = __blendColor[3] / 255;
-            // premultiply alpha
-            dst[0] += __blendColor[0] * blendAlpha * sampleAlpha;
-            dst[1] += __blendColor[1] * blendAlpha * sampleAlpha;
-            dst[2] += __blendColor[2] * blendAlpha * sampleAlpha;
-            blendAlpha *= (1 - sampleAlpha);
+            // Equivalent to gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+            dst[0] += __blendColor[0] * blendAlpha;
+            dst[1] += __blendColor[1] * blendAlpha;
+            dst[2] += __blendColor[2] * blendAlpha;
+            blendAlpha *= (1 - (__blendColor[3] / 255));
         }
         // Backdrop could be transparent, so we need to go to the "clear color" of the
         // draw scene (white) as a fallback if everything was alpha

@@ -42,7 +42,7 @@ if (wantedSkin === WantedSkinType.bitmap) {
 if (wantedSkin === WantedSkinType.vector) {
     // SVG (cat 1-a)
     const xhr = new XMLHttpRequest();
-    xhr.addEventListener('load', function () {
+    xhr.addEventListener('load', () => {
         const skinId = renderer.createSVGSkin(xhr.responseText);
         renderer.updateDrawableProperties(drawableID2, {
             skinId: skinId
@@ -61,10 +61,10 @@ if (wantedSkin === WantedSkinType.pen) {
     });
 
     canvas.addEventListener('click', event => {
-        let rect = canvas.getBoundingClientRect();
+        const rect = canvas.getBoundingClientRect();
 
-        let x = event.clientX - rect.left;
-        let y = event.clientY - rect.top;
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
 
         renderer.penLine(penSkinID, {
             color4f: [Math.random(), Math.random(), Math.random(), 1],
@@ -189,7 +189,7 @@ canvas.addEventListener('mousemove', event => {
 canvas.addEventListener('click', event => {
     const mousePos = getMousePosition(event, canvas);
     const pickID = renderer.pick(mousePos.x, mousePos.y);
-    console.log('You clicked on ' + (pickID < 0 ? 'nothing' : 'ID# ' + pickID));
+    console.log(`You clicked on ${(pickID < 0 ? 'nothing' : `ID# ${pickID}`)}`);
     if (pickID >= 0) {
         console.dir(renderer.extractDrawable(pickID, mousePos.x, mousePos.y));
     }

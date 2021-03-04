@@ -5,19 +5,6 @@ const matrix = require('gl-matrix');
 const RenderConstants = require('./RenderConstants');
 const Silhouette = require('./Silhouette');
 
-/**
- * Truncate a number into what could be stored in a 32 bit floating point value.
- * @param {number} num Number to truncate.
- * @return {number} Truncated value.
- */
-const toFloat32 = (function () {
-    const memory = new Float32Array(1);
-    return function (num) {
-        memory[0] = num;
-        return memory[0];
-    };
-}());
-
 class Skin extends EventEmitter {
     /**
      * Create a Skin, which stores and/or generates textures for use in rendering.
@@ -57,20 +44,6 @@ class Skin extends EventEmitter {
     }
 
     /**
-     * @returns {boolean} true for a raster-style skin (like a BitmapSkin), false for vector-style (like SVGSkin).
-     */
-    get isRaster () {
-        return false;
-    }
-
-    /**
-     * @returns {boolean} true if alpha is premultiplied, false otherwise
-     */
-    get hasPremultipliedAlpha () {
-        return false;
-    }
-
-    /**
      * @return {int} the unique ID for this Skin.
      */
     get id () {
@@ -92,23 +65,16 @@ class Skin extends EventEmitter {
     }
 
     /**
-     * Set the origin, in object space, about which this Skin should rotate.
-     * @param {number} x - The x coordinate of the new rotation center.
-     * @param {number} y - The y coordinate of the new rotation center.
-     * @fires Skin.event:WasAltered
+     * Should this skin's texture be filtered with nearest-neighbor or linear interpolation at the given scale?
+     * @param {?Array<Number>} scale The screen-space X and Y scaling factors at which this skin's texture will be
+     * displayed, as percentages (100 means 1 "native size" unit is 1 screen pixel; 200 means 2 screen pixels, etc).
+     * @param {Drawable} drawable The drawable that this skin's texture will be applied to.
+     * @return {boolean} True if this skin's texture, as returned by {@link getTexture}, should be filtered with
+     * nearest-neighbor interpolation.
      */
-    setRotationCenter (x, y) {
-        const emptySkin = this.size[0] === 0 && this.size[1] === 0;
-        // Compare a 32 bit x and y value against the stored 32 bit center
-        // values.
-        const changed = (
-            toFloat32(x) !== this._rotationCenter[0] ||
-            toFloat32(y) !== this._rotationCenter[1]);
-        if (!emptySkin && changed) {
-            this._rotationCenter[0] = x;
-            this._rotationCenter[1] = y;
-            this.emit(Skin.Events.WasAltered);
-        }
+    // eslint-disable-next-line no-unused-vars
+    useNearest (scale, drawable) {
+        return true;
     }
 
     /**
@@ -126,16 +92,17 @@ class Skin extends EventEmitter {
      */
     // eslint-disable-next-line no-unused-vars
     getTexture (scale) {
-        return null;
+        return this._emptyImageTexture;
     }
 
     /**
      * Get the bounds of the drawable for determining its fenced position.
      * @param {Array<number>} drawable - The Drawable instance this skin is using.
-     * @return {!Rectangle} The drawable's bounds.
+     * @param {?Rectangle} result - Optional destination for bounds calculation.
+     * @return {!Rectangle} The drawable's bounds. For compatibility with Scratch 2, we always use getAABB.
      */
-    getFenceBounds (drawable) {
-        return drawable.getFastBounds();
+    getFenceBounds (drawable, result) {
+        return drawable.getAABB(result);
     }
 
     /**
@@ -146,8 +113,40 @@ class Skin extends EventEmitter {
     updateSilhouette () {}
 
     /**
+     * Set the contents of this skin to an empty skin.
+     * @fires Skin.event:WasAltered
+     */
+    setEmptyImageData () {
+        // Free up the current reference to the _texture
+        this._texture = null;
+
+        if (!this._emptyImageData) {
+            // Create a transparent pixel
+            this._emptyImageData = document.createElement('canvas');
+            this._emptyImageData.width = 1;
+            this._emptyImageData.height = 1;
+
+            // Note: we're using _emptyImageTexture here instead of _texture
+            // so that we can cache this empty texture for later use as needed.
+            // this._texture can get modified by other skins (e.g. BitmapSkin
+            // and SVGSkin, so we can't use that same field for caching)
+            // TODO: refine after fixing merge
+            this._emptyImageTexture = this._emptyImageData;
+        }
+
+        this._rotationCenter[0] = 0;
+        this._rotationCenter[1] = 0;
+
+        this._silhouette.update(this._emptyImageData);
+        this.emit(Skin.Events.WasAltered);
+    }
+
+    /**
      * Does this point touch an opaque or translucent point on this skin?
      * Nearest Neighbor version
+     * The caller is responsible for ensuring this skin's silhouette is up-to-date.
+     * @see updateSilhouette
+     * @see Drawable.updateCPURenderAttributes
      * @param {matrix.vec2} vec A texture coordinate.
      * @return {boolean} Did it touch?
      */
@@ -158,6 +157,9 @@ class Skin extends EventEmitter {
     /**
      * Does this point touch an opaque or translucent point on this skin?
      * Linear Interpolation version
+     * The caller is responsible for ensuring this skin's silhouette is up-to-date.
+     * @see updateSilhouette
+     * @see Drawable.updateCPURenderAttributes
      * @param {matrix.vec2} vec A texture coordinate.
      * @return {boolean} Did it touch?
      */

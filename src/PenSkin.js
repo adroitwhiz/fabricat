@@ -50,7 +50,7 @@ class PenSkin extends Skin {
 
         /** @type {boolean} */
         this._silhouetteDirty = false;
-        
+
         this.onNativeSizeChanged = this.onNativeSizeChanged.bind(this);
         this._renderer.on(RenderConstants.Events.NativeSizeChanged, this.onNativeSizeChanged);
 
@@ -63,13 +63,6 @@ class PenSkin extends Skin {
     dispose () {
         this._renderer.removeListener(RenderConstants.Events.NativeSizeChanged, this.onNativeSizeChanged);
         super.dispose();
-    }
-
-    /**
-     * @returns {boolean} true for a raster-style skin (like a BitmapSkin), false for vector-style (like SVGSkin).
-     */
-    get isRaster () {
-        return true;
     }
 
     /**

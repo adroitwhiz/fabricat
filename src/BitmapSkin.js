@@ -38,13 +38,6 @@ class BitmapSkin extends Skin {
     }
 
     /**
-     * @returns {boolean} true for a raster-style skin (like a BitmapSkin), false for vector-style (like SVGSkin).
-     */
-    get isRaster () {
-        return true;
-    }
-
-    /**
      * @return {Array<number>} the ratio of this skin's texture size to its native size.
      */
     get sizeRatio () {
@@ -57,16 +50,7 @@ class BitmapSkin extends Skin {
      */
     // eslint-disable-next-line no-unused-vars
     getTexture (scale) {
-        return this._texture;
-    }
-
-    /**
-     * Get the bounds of the drawable for determining its fenced position.
-     * @param {Array<number>} drawable - The Drawable instance this skin is using.
-     * @return {!Rectangle} The drawable's bounds. For compatibility with Scratch 2, we always use getAABB for bitmaps.
-     */
-    getFenceBounds (drawable) {
-        return drawable.getAABB();
+        return this._texture || super.getTexture();
     }
 
     /**
@@ -78,6 +62,11 @@ class BitmapSkin extends Skin {
      * @fires Skin.event:WasAltered
      */
     setBitmap (bitmapData, costumeResolution = 2, rotationCenter) {
+        if (!bitmapData.width || !bitmapData.height) {
+            super.setEmptyImageData();
+            return;
+        }
+
         // We can't just set our texture to bitmapData, because it may be changed/reused for loading other costumes.
         // Instead, we draw it to our own internal canvas.
         const texSize = BitmapSkin._getBitmapSize(bitmapData);
@@ -96,7 +85,8 @@ class BitmapSkin extends Skin {
         this.size[1] = this._textureSize[1] / costumeResolution;
 
         if (typeof rotationCenter === 'undefined') rotationCenter = this.calculateRotationCenter();
-        this.setRotationCenter.apply(this, rotationCenter);
+        this._rotationCenter[0] = rotationCenter[0];
+        this._rotationCenter[1] = rotationCenter[1];
 
         this.emit(Skin.Events.WasAltered);
     }
