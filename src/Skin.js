@@ -120,24 +120,21 @@ class Skin extends EventEmitter {
         // Free up the current reference to the _texture
         this._texture = null;
 
-        if (!this._emptyImageData) {
+        if (!this._emptyImageTexture) {
             // Create a transparent pixel
-            this._emptyImageData = document.createElement('canvas');
-            this._emptyImageData.width = 1;
-            this._emptyImageData.height = 1;
-
             // Note: we're using _emptyImageTexture here instead of _texture
             // so that we can cache this empty texture for later use as needed.
             // this._texture can get modified by other skins (e.g. BitmapSkin
             // and SVGSkin, so we can't use that same field for caching)
-            // TODO: refine after fixing merge
-            this._emptyImageTexture = this._emptyImageData;
+            this._emptyImageTexture = document.createElement('canvas');
+            this._emptyImageTexture.width = 1;
+            this._emptyImageTexture.height = 1;
         }
 
         this._rotationCenter[0] = 0;
         this._rotationCenter[1] = 0;
 
-        this._silhouette.update(this._emptyImageData);
+        this._silhouette.update(this._emptyImageTexture);
         this.emit(Skin.Events.WasAltered);
     }
 
