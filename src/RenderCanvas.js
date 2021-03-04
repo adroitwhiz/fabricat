@@ -37,6 +37,12 @@ const __blendColor = new Uint8ClampedArray(4);
 const MAX_TOUCH_SIZE = [3, 3];
 
 /**
+ * Maximum number of pixels in either dimension of "extracted drawable" data
+ * @type {int}
+ */
+const MAX_EXTRACTED_DRAWABLE_DIMENSION = 2048;
+
+/**
  * Determines if the mask color is "close enough" (only test the 6 top bits for
  * each color).  These bit masks are what scratch 2 used to use, so we do the same.
  * @param {Uint8Array} a A color3b or color4b value.
@@ -1058,9 +1064,99 @@ class RenderCanvas extends EventEmitter {
         };
     }
 
-    // TODO
-    extractDrawableScreenSpace () {
-        throw new Error('Not implemented');
+    /**
+     * @typedef DrawableExtraction
+     * @property {ImageData} data Raw pixel data for the drawable
+     * @property {number} x The x coordinate of the drawable's bounding box's top-left corner, in 'CSS pixels'
+     * @property {number} y The y coordinate of the drawable's bounding box's top-left corner, in 'CSS pixels'
+     * @property {number} width The drawable's bounding box width, in 'CSS pixels'
+     * @property {number} height The drawable's bounding box height, in 'CSS pixels'
+     */
+
+    /**
+     * Return a drawable's pixel data and bounds in screen space.
+     * @param {int} drawableID The ID of the drawable to get pixel data for
+     * @return {DrawableExtraction} Data about the picked drawable
+     */
+    extractDrawableScreenSpace (drawableID) {
+        const drawable = this._allDrawables[drawableID];
+        if (!drawable) throw new Error(`Could not extract drawable with ID ${drawableID}; it does not exist`);
+
+
+        const nativeCenterX = this._nativeSize[0] * 0.5;
+        const nativeCenterY = this._nativeSize[1] * 0.5;
+
+        const scratchBounds = drawable.getFastBounds();
+
+        const canvas = this.canvas;
+        // Ratio of the screen-space scale of the stage's canvas to the "native size" of the stage
+        const scaleFactor = canvas.width / this._nativeSize[0];
+
+        // Bounds of the extracted drawable, in "canvas pixel space"
+        // (origin is 0, 0, destination is the canvas width, height).
+        const canvasSpaceBounds = new Rectangle();
+        canvasSpaceBounds.initFromBounds(
+            (scratchBounds.left + nativeCenterX) * scaleFactor,
+            (scratchBounds.right + nativeCenterX) * scaleFactor,
+            // in "canvas space", +y is down, but Rectangle methods assume bottom < top, so swap them
+            (nativeCenterY - scratchBounds.top) * scaleFactor,
+            (nativeCenterY - scratchBounds.bottom) * scaleFactor
+        );
+        canvasSpaceBounds.snapToInt();
+
+        // undo the transformation to transform the bounds, snapped to "canvas-pixel space", back to "Scratch space"
+        // We have to transform -> snap -> invert transform so that the "Scratch-space" bounds are snapped in
+        // "canvas-pixel space".
+        scratchBounds.initFromBounds(
+            (canvasSpaceBounds.left / scaleFactor) - nativeCenterX,
+            (canvasSpaceBounds.right / scaleFactor) - nativeCenterX,
+            nativeCenterY - (canvasSpaceBounds.top / scaleFactor),
+            nativeCenterY - (canvasSpaceBounds.bottom / scaleFactor)
+        );
+
+        // Set a reasonable max limit width and height for the bufferInfo bounds
+        const clampedWidth = Math.min(MAX_EXTRACTED_DRAWABLE_DIMENSION, canvasSpaceBounds.width);
+        const clampedHeight = Math.min(MAX_EXTRACTED_DRAWABLE_DIMENSION, canvasSpaceBounds.height);
+
+        const dstCanvas = this._tempCanvas;
+        const dstCtx = this._tempCanvasCtx;
+
+        dstCanvas.width = clampedWidth;
+        dstCanvas.height = clampedHeight;
+
+        const corner = matrix.vec2.fromValues(-scratchBounds.left, scratchBounds.top);
+        corner[0] *= clampedWidth / scratchBounds.width;
+        corner[1] *= clampedHeight / scratchBounds.height;
+        matrix.vec2.transformMat2d(corner, corner, this._inverseProjection);
+
+        const translated = matrix.mat2d.create();
+        matrix.mat2d.copy(translated, this._projection);
+        matrix.mat2d.translate(translated, translated, corner);
+        matrix.mat2d.scale(
+            translated,
+            translated,
+            [clampedWidth / scratchBounds.width, clampedHeight / scratchBounds.height]
+        );
+
+
+        this._drawThese([drawableID], translated, {dstCanvas});
+
+        const imageData = dstCtx.getImageData(0, 0, dstCanvas.width, dstCanvas.height);
+
+        // On high-DPI devices, the canvas' width (in canvas pixels) will be larger than its width in CSS pixels.
+        // We want to return the CSS-space bounds,
+        // so take into account the ratio between the canvas' pixel dimensions and its layout dimensions.
+        // This is usually the same as 1 / window.devicePixelRatio, but if e.g. you zoom your browser window without
+        // the canvas resizing, then it'll differ.
+        const ratio = canvas.getBoundingClientRect().width / canvas.width;
+
+        return {
+            imageData,
+            x: canvasSpaceBounds.left * ratio,
+            y: canvasSpaceBounds.bottom * ratio,
+            width: canvasSpaceBounds.width * ratio,
+            height: canvasSpaceBounds.height * ratio
+        };
     }
 
     /**
