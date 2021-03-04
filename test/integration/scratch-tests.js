@@ -107,7 +107,7 @@ const testFile = async (file, page) => {
 
 // immediately invoked async function to let us wait for each test to finish before starting the next.
 (async () => {
-    const browser = await chromium.launch({headless: false});
+    const browser = await chromium.launch();
     const page = await browser.newPage();
 
     const files = fs.readdirSync(testDir())
