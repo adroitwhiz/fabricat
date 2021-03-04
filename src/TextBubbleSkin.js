@@ -265,7 +265,7 @@ class TextBubbleSkin extends Skin {
             this._textureDirty = false;
             this.emit(Skin.Events.WasAltered);
 
-            this._silhouette.update(this._canvas.getContext('2d').getImageData(0, 0, this.size[0], this.size[1]));
+            this._silhouette.update(this._canvas);
         }
 
         return this._canvas;

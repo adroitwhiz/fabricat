@@ -163,7 +163,7 @@ class PenSkin extends Skin {
      */
     updateSilhouette () {
         if (this._silhouetteDirty) {
-            this._silhouette.update(this._ctx.getImageData(0, 0, this.size[0], this.size[1]));
+            this._silhouette.update(this._canvas);
         }
     }
 }
