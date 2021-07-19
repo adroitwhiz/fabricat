@@ -1,5 +1,5 @@
 const Skin = require('./Skin');
-const SvgRenderer = require('scratch-svg-renderer').SVGRenderer;
+const {loadSvgString, serializeSvgToString} = require('scratch-svg-renderer');
 const EffectManager = require('./EffectManager');
 
 class SVGSkin extends Skin {
@@ -16,29 +16,26 @@ class SVGSkin extends Skin {
         /** @type {RenderCanvas} */
         this._renderer = renderer;
 
-        /** @type {SvgRenderer} */
-        this._svgRenderer = new SvgRenderer();
-
         /** @type {HTMLImageElement} */
-        this._texture = null;
+        this._svgImage = document.createElement('img');
+
+        /** @type {boolean} */
+        this._svgImageLoaded = false;
+
+        /** @type {Array<number>} */
+        this._size = [0, 0];
+
+        /** @type {HTMLCanvasElement} */
+        this._canvas = document.createElement('canvas');
+
+        /** @type {CanvasRenderingContext2D} */
+        this._context = this._canvas.getContext('2d');
 
         /**
          * The natural size, in Scratch units, of this skin.
          * @type {Array<number>}
          */
         this.size = [0, 0];
-
-        /**
-         * The viewbox offset of the svg.
-         * @type {Array<number>}
-         */
-        this._viewOffset = [0, 0];
-
-        /**
-         * The rotation center before offset by _viewOffset.
-         * @type {Array<number>}
-         */
-        this._rawRotationCenter = [0, 0];
     }
 
     /**
@@ -86,7 +83,7 @@ class SVGSkin extends Skin {
      */
     // eslint-disable-next-line no-unused-vars
     getTexture (scale) {
-        return this._texture;
+        return this._svgImage;
     }
 
     /**
@@ -96,25 +93,34 @@ class SVGSkin extends Skin {
      * @fires Skin.event:WasAltered
      */
     setSVG (svgData, rotationCenter) {
-        this._svgRenderer.loadSVG(svgData, false, () => {
-            this._texture = this._svgRenderer._cachedImage;
+        const svgTag = loadSvgString(svgData);
+        const svgText = serializeSvgToString(svgTag, true /* shouldInjectFonts */);
+        this._svgImageLoaded = false;
 
-            this._silhouette.update(this._texture);
+
+        const {x, y, width, height} = svgTag.viewBox.baseVal;
+        this.size[0] = width;
+        this.size[1] = height;
+
+        this._svgImage.onload = () => {
+
+            if (width === 0 || height === 0) {
+                super.setEmptyImageData();
+                return;
+            }
 
             if (typeof rotationCenter === 'undefined') rotationCenter = this.calculateRotationCenter();
-            this._rotationCenter[0] = rotationCenter[0] - this._viewOffset[0];
-            this._rotationCenter[1] = rotationCenter[1] - this._viewOffset[1];
+            // Compensate for viewbox offset.
+            // See https://github.com/LLK/scratch-render/pull/90.
+            this._rotationCenter[0] = rotationCenter[0] - x;
+            this._rotationCenter[1] = rotationCenter[1] - y;
+
+            this._svgImageLoaded = true;
 
             this.emit(Skin.Events.WasAltered);
-        });
+        };
 
-        // Size must be updated synchronously because the VM sets the costume's
-        // `size` immediately after calling this.
-        this.size = this._svgRenderer.size;
-        this._viewOffset = this._svgRenderer.viewOffset;
-        // Reset rawRotationCenter when we update viewOffset. The rotation
-        // center used to render will be updated later.
-        this._rawRotationCenter = [0, 0];
+        this._svgImage.src = `data:image/svg+xml;utf8,${encodeURIComponent(svgText)}`;
     }
 
 }

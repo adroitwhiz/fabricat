@@ -625,7 +625,10 @@ class RenderCanvas extends EventEmitter {
 
         matrix.mat2d.multiply(this._drawProjection, this._scaleMatrix, this._projection);
 
-        this._drawThese(this._drawList, this._drawProjection);
+        this._drawThese(this._drawList, this._drawProjection, {
+            framebufferWidth: ctx.canvas.width,
+            framebufferHeight: ctx.canvas.height
+        });
 
         if (this._snapshotCallbacks.length > 0) {
             const snapshot = this.canvas.toDataURL();
@@ -986,85 +989,6 @@ class RenderCanvas extends EventEmitter {
     }
 
     /**
-     * @typedef DrawableExtractionOld
-     * @property {Uint8Array} data Raw pixel data for the drawable
-     * @property {int} width Drawable bounding box width
-     * @property {int} height Drawable bounding box height
-     * @property {Array<number>} scratchOffset [x, y] offset in Scratch coordinates
-     * from the drawable position to the client x, y coordinate
-     * @property {int} x The x coordinate relative to drawable bounding box
-     * @property {int} y The y coordinate relative to drawable bounding box
-     */
-
-    /**
-     * Return drawable pixel data and picking coordinates relative to the drawable bounds
-     * @param {int} drawableID The ID of the drawable to get pixel data for
-     * @param {int} x The client x coordinate of the picking location.
-     * @param {int} y The client y coordinate of the picking location.
-     * @return {?DrawableExtractionOld} Data about the picked drawable
-     * @deprecated Use {@link extractDrawableScreenSpace} instead.
-     */
-    extractDrawable (drawableID, x, y) {
-        const drawable = this._allDrawables[drawableID];
-        if (!drawable) return null;
-
-        // Convert client coordinates into absolute scratch units
-        const scratchX = this._nativeSize[0] * ((x / this.ctx.canvas.clientWidth) - 0.5);
-        const scratchY = this._nativeSize[1] * ((y / this.ctx.canvas.clientHeight) - 0.5);
-
-        const bounds = drawable.getFastBounds();
-        bounds.snapToInt();
-
-        // Translate to scratch units relative to the drawable
-        const pickX = scratchX - bounds.left;
-        const pickY = scratchY + bounds.top;
-
-        const dstCanvas = this._tempCanvas;
-        const dstCtx = this._tempCanvasCtx;
-
-        dstCanvas.width = bounds.width;
-        dstCanvas.height = bounds.height;
-
-        const corner = matrix.vec2.fromValues(-bounds.left, bounds.top);
-        matrix.vec2.transformMat2d(corner, corner, this._inverseProjection);
-
-        const translated = matrix.mat2d.create();
-        matrix.mat2d.translate(translated, this._projection, corner);
-
-        this._drawThese([drawableID], translated, {dstCanvas: dstCanvas});
-
-        const data = dstCtx.getImageData(0, 0, dstCanvas.width, dstCanvas.height).data;
-
-        if (this._debugCanvas) {
-            this._debugCanvas.width = dstCanvas.width;
-            this._debugCanvas.height = dstCanvas.height;
-            const ctx = this._debugCanvas.getContext('2d');
-            const imageData = ctx.createImageData(dstCanvas.width, dstCanvas.height);
-            imageData.data.set(data);
-            ctx.putImageData(imageData, 0, 0);
-            ctx.beginPath();
-            ctx.arc(pickX, pickY, 3, 0, 2 * Math.PI, false);
-            ctx.fillStyle = 'white';
-            ctx.fill();
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = 'black';
-            ctx.stroke();
-        }
-
-        return {
-            data: data,
-            width: bounds.width,
-            height: bounds.height,
-            scratchOffset: [
-                -scratchX + drawable._position[0],
-                -scratchY - drawable._position[1]
-            ],
-            x: pickX,
-            y: pickY
-        };
-    }
-
-    /**
      * @typedef DrawableExtraction
      * @property {ImageData} data Raw pixel data for the drawable
      * @property {number} x The x coordinate of the drawable's bounding box's top-left corner, in 'CSS pixels'
@@ -1139,7 +1063,15 @@ class RenderCanvas extends EventEmitter {
         );
 
 
-        this._drawThese([drawableID], translated, {dstCanvas});
+        this._drawThese([drawableID], translated, {
+            dstCanvas,
+            // Don't apply the ghost effect. TODO: is this an intentional design decision?
+            effectMask: ~EffectManager.EFFECT_INFO.ghost.mask,
+            // We're doing this in screen-space, so the framebuffer dimensions should be those of the canvas in
+            // screen-space. This is used to ensure SVG skins are rendered at the proper resolution.
+            framebufferWidth: canvas.width,
+            framebufferHeight: canvas.height
+        });
 
         const imageData = dstCtx.getImageData(0, 0, dstCanvas.width, dstCanvas.height);
 
@@ -1547,8 +1479,10 @@ class RenderCanvas extends EventEmitter {
      * @param {object} [opts] Options for drawing
      * @param {idFilterFunc} opts.filter An optional filter function.
      * @param {int} opts.effectMask Bitmask for effects to allow
-     * @param {boolean} opts.ignoreVisibility Draw all, despite visibility (e.g. stamping, touching color) TODO
+     * @param {boolean} opts.ignoreVisibility Draw all, despite visibility (e.g. stamping, touching color)
      * @param {HTMLCanvasElement} opts.dstCanvas The destination canvas to draw to
+     * @param {int} opts.framebufferWidth The width of the framebuffer being drawn onto. Defaults to "native" width
+     * @param {int} opts.framebufferHeight The height of the framebuffer being drawn onto. Defaults to "native" height
      * @private
      */
     _drawThese (drawables, projection, opts = {}) {
@@ -1561,6 +1495,11 @@ class RenderCanvas extends EventEmitter {
 
         ctx.save();
         ctx.imageSmoothingEnabled = false;
+
+        const framebufferSpaceScaleDiffers = (
+            'framebufferWidth' in opts && 'framebufferHeight' in opts &&
+            opts.framebufferWidth !== this._nativeSize[0] && opts.framebufferHeight !== this._nativeSize[1]
+        );
 
         const mat = matrix.mat2d.create();
 
@@ -1577,11 +1516,13 @@ class RenderCanvas extends EventEmitter {
             // the ignoreVisibility flag is used (e.g. for stamping or touchingColor).
             if (!drawable.getVisible() && !opts.ignoreVisibility) continue;
 
-            // Combine drawable scale with the native vs. backing pixel ratio
-            const drawableScale = [
-                drawable.scale[0] * ctx.canvas.width / this._nativeSize[0],
-                drawable.scale[1] * ctx.canvas.height / this._nativeSize[1]
-            ];
+            // drawableScale is the "framebuffer-pixel-space" scale of the drawable, as percentages of the drawable's
+            // "native size" (so 100 = same as skin's "native size", 200 = twice "native size").
+            // If the framebuffer dimensions are the same as the stage's "native" size, there's no need to calculate it.
+            const drawableScale = framebufferSpaceScaleDiffers ? [
+                drawable.scale[0] * opts.framebufferWidth / this._nativeSize[0],
+                drawable.scale[1] * opts.framebufferHeight / this._nativeSize[1]
+            ] : drawable.scale;
 
             // If the skin or texture isn't ready yet, skip it.
             if (!drawable.skin || !drawable.skin.getTexture(drawableScale)) continue;
@@ -1800,6 +1741,6 @@ class RenderCanvas extends EventEmitter {
 }
 
 // :3
-RenderCanvas.prototype.canHazPixels = RenderCanvas.prototype.extractDrawable;
+RenderCanvas.prototype.canHazPixels = RenderCanvas.prototype.extractDrawableScreenSpace;
 
 module.exports = RenderCanvas;
